@@ -2,7 +2,7 @@
 //! path, then scales the frame into the window.
 //!
 //! Milestone 4 adds audio playback, scrubbing and parameter sliders; for now
-//! the clock simply runs from when the window opens.
+//! the clock simply runs from when the window opens, looping over the piece.
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -17,17 +17,19 @@ use winit::keyboard::{Key, NamedKey};
 use winit::window::{Window, WindowId};
 
 use crate::FPS;
-use crate::renderer::{Blit, Gpu, Renderer};
+use crate::renderer::{Blit, Gpu, RenderSettings, Renderer};
+use crate::show::Show;
 
-pub fn run(photo: RgbaImage) -> Result<()> {
+pub fn run(photo: RgbaImage, show: Show, settings: RenderSettings) -> Result<()> {
     let event_loop = EventLoop::new()?;
-    let mut app = App { photo: Some(photo), state: None, error: None };
+    let mut app = App { setup: Some((photo, show, settings)), state: None, error: None };
     event_loop.run_app(&mut app)?;
     app.error.map_or(Ok(()), Err)
 }
 
 struct App {
-    photo: Option<RgbaImage>,
+    /// Consumed when the window is created.
+    setup: Option<(RgbaImage, Show, RenderSettings)>,
     state: Option<State>,
     error: Option<anyhow::Error>,
 }
@@ -39,11 +41,12 @@ struct State {
     gpu: Gpu,
     renderer: Renderer,
     blit: Blit,
+    show: Show,
     started: Instant,
 }
 
 impl State {
-    fn new(event_loop: &ActiveEventLoop, photo: RgbaImage) -> Result<Self> {
+    fn new(event_loop: &ActiveEventLoop, (photo, show, settings): (RgbaImage, Show, RenderSettings)) -> Result<Self> {
         let window = Arc::new(
             event_loop.create_window(
                 Window::default_attributes()
@@ -65,9 +68,9 @@ impl State {
         config.present_mode = wgpu::PresentMode::AutoVsync;
         surface.configure(&gpu.device, &config);
 
-        let renderer = Renderer::new(&gpu, &photo, FPS);
+        let renderer = Renderer::new(&gpu, &photo, settings);
         let blit = Blit::new(&gpu, config.format, renderer.target_view(), renderer.size());
-        Ok(Self { window, surface, config, gpu, renderer, blit, started: Instant::now() })
+        Ok(Self { window, surface, config, gpu, renderer, blit, show, started: Instant::now() })
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -87,10 +90,13 @@ impl State {
             wgpu::CurrentSurfaceTexture::Validation => anyhow::bail!("surface validation error"),
         };
         let view = surface_texture.texture.create_view(&Default::default());
-        let frame = (self.started.elapsed().as_secs_f64() * FPS as f64) as u32;
+        let mut frame = (self.started.elapsed().as_secs_f64() * FPS as f64) as u32;
+        if let Some(len) = self.show.len() {
+            frame %= len;
+        }
 
         let mut encoder = self.gpu.device.create_command_encoder(&Default::default());
-        self.renderer.encode(&self.gpu, &mut encoder, frame);
+        self.renderer.encode(&self.gpu, &mut encoder, &self.show.inputs(frame));
         self.blit.encode(&mut encoder, &view, (self.config.width, self.config.height));
         self.gpu.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
@@ -101,8 +107,8 @@ impl State {
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let Some(photo) = self.photo.take() else { return };
-        match State::new(event_loop, photo) {
+        let Some(setup) = self.setup.take() else { return };
+        match State::new(event_loop, setup) {
             Ok(state) => {
                 state.window.request_redraw();
                 self.state = Some(state);

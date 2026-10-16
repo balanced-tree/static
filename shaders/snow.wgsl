@@ -1,9 +1,10 @@
 // TV snow on a coarse virtual grid, re-rolled every frame.
 
-// Snow amount where the snow starts to take over the image, and where it has
-// fully replaced it. Below the start it is grain over the photo.
-const COVER_START: f32 = 0.35;
-const COVER_FULL: f32 = 1.0;
+// Below COVER_START the snow is grain over the photo; from there it takes
+// over, up to COVER_MAX at snow = 1. Short of 1 on purpose: like a weak TV
+// signal, a ghost of the object stays visible (pure static is its own scene).
+const COVER_START: f32 = 0.45;
+const COVER_MAX: f32 = 0.88;
 // Grain strength (perceptual units) at snow = 1, before coverage.
 const GRAIN: f32 = 0.35;
 
@@ -16,8 +17,11 @@ fn snow_value(uv: vec2<f32>) -> f32 {
 
 fn apply_snow(linear: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
     let s = globals.snow;
+    if (s <= 0.0) {
+        return linear; // exactly the photo at rest
+    }
     let n = snow_value(uv);
     var c = to_perceptual(linear) + (n - 0.5) * GRAIN * s;
-    c = mix(c, vec3<f32>(n), smoothstep(COVER_START, COVER_FULL, s));
+    c = mix(c, vec3<f32>(n), COVER_MAX * smoothstep(COVER_START, 1.0, s));
     return to_linear(c);
 }

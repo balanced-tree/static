@@ -13,6 +13,8 @@ use bytemuck::{Pod, Zeroable};
 use image::RgbaImage;
 use wgpu::util::DeviceExt;
 
+use crate::look::Disturbance;
+
 /// Format of the offscreen frame. sRGB, so photo colours pass through
 /// unchanged while shader maths happens in linear space.
 pub const TARGET_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
@@ -21,6 +23,8 @@ const SCENE_SHADER: &str = concat!(
     include_str!("../../shaders/fullscreen.wgsl"),
     include_str!("../../shaders/common.wgsl"),
     include_str!("../../shaders/photo.wgsl"),
+    include_str!("../../shaders/snow.wgsl"),
+    include_str!("../../shaders/scene.wgsl"),
 );
 
 pub struct Gpu {
@@ -60,12 +64,32 @@ struct Globals {
     resolution: [f32; 2],
     frame: u32,
     fps: f32,
+    snow: f32,
+    jitter: f32,
+    snow_rows: f32,
+    seed: u32,
+}
+
+/// Fixed for a whole render.
+#[derive(Clone, Copy, Debug)]
+pub struct RenderSettings {
+    pub fps: f32,
+    pub seed: u32,
+    /// Rows of the virtual snow grid (540 = 4×4-pixel snow at 4K).
+    pub snow_rows: f32,
+}
+
+/// What changes from frame to frame.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FrameInputs {
+    pub index: u32,
+    pub disturbance: Disturbance,
 }
 
 pub struct Renderer {
     width: u32,
     height: u32,
-    fps: f32,
+    settings: RenderSettings,
     pipeline: wgpu::RenderPipeline,
     bind_group: wgpu::BindGroup,
     globals: wgpu::Buffer,
@@ -76,7 +100,7 @@ pub struct Renderer {
 impl Renderer {
     /// The photo must already be framed to the output resolution; its size
     /// sets the size of every frame.
-    pub fn new(gpu: &Gpu, photo: &RgbaImage, fps: f32) -> Self {
+    pub fn new(gpu: &Gpu, photo: &RgbaImage, settings: RenderSettings) -> Self {
         let device = &gpu.device;
         let (width, height) = photo.dimensions();
         let size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
@@ -110,13 +134,18 @@ impl Renderer {
         });
         let target_view = target.create_view(&Default::default());
 
-        let globals = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let globals = device.create_buffer(&wgpu::BufferDescriptor {
             label: Some("globals"),
-            contents: bytemuck::bytes_of(&Globals { resolution: [width as f32, height as f32], frame: 0, fps }),
+            size: std::mem::size_of::<Globals>() as u64,
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("photo"),
+            // Jitter samples slightly past the edges; mirroring hides that
+            // better than smearing the edge pixels.
+            address_mode_u: wgpu::AddressMode::MirrorRepeat,
+            address_mode_v: wgpu::AddressMode::MirrorRepeat,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
@@ -153,7 +182,7 @@ impl Renderer {
         });
         let pipeline = fullscreen_pipeline(device, "scene", SCENE_SHADER, &layout, TARGET_FORMAT);
 
-        Self { width, height, fps, pipeline, bind_group, globals, target, target_view }
+        Self { width, height, settings, pipeline, bind_group, globals, target, target_view }
     }
 
     pub fn size(&self) -> (u32, u32) {
@@ -165,9 +194,17 @@ impl Renderer {
         &self.target_view
     }
 
-    /// Records frame `frame` into the offscreen target.
-    pub fn encode(&self, gpu: &Gpu, encoder: &mut wgpu::CommandEncoder, frame: u32) {
-        let globals = Globals { resolution: [self.width as f32, self.height as f32], frame, fps: self.fps };
+    /// Records one frame into the offscreen target.
+    pub fn encode(&self, gpu: &Gpu, encoder: &mut wgpu::CommandEncoder, frame: &FrameInputs) {
+        let globals = Globals {
+            resolution: [self.width as f32, self.height as f32],
+            frame: frame.index,
+            fps: self.settings.fps,
+            snow: frame.disturbance.snow,
+            jitter: frame.disturbance.jitter,
+            snow_rows: self.settings.snow_rows,
+            seed: self.settings.seed,
+        };
         gpu.queue.write_buffer(&self.globals, 0, bytemuck::bytes_of(&globals));
 
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -185,7 +222,7 @@ impl Renderer {
         pass.draw(0..3, 0..1);
     }
 
-    pub fn render(&self, gpu: &Gpu, frame: u32) {
+    pub fn render(&self, gpu: &Gpu, frame: &FrameInputs) {
         let mut encoder = gpu.device.create_command_encoder(&Default::default());
         self.encode(gpu, &mut encoder, frame);
         gpu.queue.submit([encoder.finish()]);
@@ -299,4 +336,35 @@ fn fullscreen_pipeline(
         multiview_mask: None,
         cache: None,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn noisy(index: u32) -> FrameInputs {
+        FrameInputs { index, disturbance: Disturbance { snow: 0.8, jitter: 0.6 } }
+    }
+
+    #[test]
+    fn frames_are_deterministic_and_rest_is_the_photo() {
+        let Ok(gpu) = Gpu::new(Gpu::instance(), None) else {
+            eprintln!("no GPU adapter; skipping");
+            return;
+        };
+        let photo = crate::assets::test_card(320, 180);
+        let renderer = Renderer::new(&gpu, &photo, RenderSettings { fps: 25.0, seed: 7, snow_rows: 90.0 });
+        let render = |inputs: FrameInputs| {
+            renderer.render(&gpu, &inputs);
+            renderer.read_frame(&gpu).unwrap()
+        };
+
+        let a = render(noisy(10));
+        assert_eq!(a, render(noisy(10)), "same frame must render identically");
+        assert_ne!(a, render(noisy(11)), "noise must change between frames");
+
+        let rest = render(FrameInputs { index: 10, ..Default::default() });
+        let max_diff = rest.as_raw().iter().zip(photo.as_raw()).map(|(x, y)| x.abs_diff(*y)).max().unwrap();
+        assert!(max_diff <= 1, "at rest the frame should be the photo (max diff {max_diff})");
+    }
 }
