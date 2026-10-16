@@ -170,7 +170,17 @@ Presets to try in preview: **Dead channel** (mono), **Muted + split** (desaturat
 
 ## 7. Timeline / cue file (`timeline.toml`)
 
-Hand-authored and hot-reloaded in preview. Keyframes interpolate (linear or eased), which fits the continuous-drift structure.
+Hand-authored and hot-reloaded in preview. Keyframes interpolate (linear or eased), which fits the continuous-drift structure. The repo's `timeline.toml` is a commented starter covering every key.
+
+**Timing rules** (as built):
+- A cue's **scene** change starts at `at` and lasts `crossfade` (default 6 s, `noise_dissolve`).
+- A cue's **parameters** start moving at `at` and arrive after `ramp` (default 4 s). `ramp = "next"` drifts all the way to the next cue (continuous drift). `ease` is `smooth` (default), `linear` or `step`. Parameters a cue doesn't mention keep their values; before any cue sets one, it has its default.
+- The intro's `resolve` into the first cue's photo starts at `hold`, regardless of that cue's `at`. The cue's parameters still start at its own `at`.
+- The outro has its own `crossfade` (default 6 s) for the transition at `begin`. `end_on` replaces the **final second** of the video: black, static, or `cut` (no change).
+- `black` is a dead screen and `freeze` holds the last photo perfectly still. Both turn the signal's disturbance off, fading it across the transition.
+- Typos are errors (unknown keys, groups or values), so a misspelt setting never silently does nothing. Missing photos, audio or fonts are warnings, so a half-finished timeline still previews.
+- Parameters per cue: `stillness`, `snow_mix`, `jitter_mix`, `tear_mix`, `chroma_mix`, `hiss`/`loud` (`attack`, `release`, `gain`, `curve`), `clicks` (`decay`, `gain`), `snow` (`rows`), `crt`, `colour`. One table in `src/params.rs` defines them all.
+- Not built: Ken Burns drift and the mains-hum shimmer (both optional in this plan).
 
 Each cue shows one **scene**:
 - `photo = "photos/…"`: an object photo
@@ -275,7 +285,7 @@ end_on = "black"
 
 - Window at ~1080p (or a fraction of 4K) using the **same shaders** as the final render.
 - Audio playback synced to the visual clock: play/pause, scrub bar, jump to cue, loop a region.
-- `egui` side panel with live sliders for every parameter. A **"copy as TOML"** button writes the current values back into a cue.
+- `egui` side panel with live sliders for every parameter. Sliders show the value at the playhead; moving one sets an **override** that holds for the whole piece until cleared. A **"copy as TOML"** button turns the overrides into a cue to paste into the timeline.
 - Hot reload: changes to `.wgsl` and `timeline.toml` are picked up on save.
 - Overlay toggle: feature meters (hiss, click_env, loud) and a click-event marker strip to check analysis against what you hear.
 
@@ -337,7 +347,7 @@ Static/
 3. ✅ **Snow + jitter:** first audio-reactive shader layers on one photo, plus the disturbance mix and stillness modes.
 4. ✅ **Preview app:** audio playback, scrubbing, egui sliders.
 5. ✅ **Tears + CRT:** click-driven displacement, scanlines, persistence.
-6. **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
+6. ✅ **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
 7. **Export:** ffmpeg pipe, YouTube-ready MP4, chunked/resumable renders, YouTube-bitrate excerpt check.
 8. **Exploration pass:** compare stillness modes and colour presets against the actual piece, then lock the timeline.
 9. **Final 4K render.**
