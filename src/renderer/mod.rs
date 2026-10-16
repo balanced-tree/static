@@ -24,7 +24,8 @@ const SCENE_SHADER: &str = concat!(
 );
 
 pub struct Gpu {
-    pub instance: wgpu::Instance,
+    // Held so the instance lives as long as the device and surfaces.
+    _instance: wgpu::Instance,
     pub adapter: wgpu::Adapter,
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
@@ -41,6 +42,7 @@ impl Gpu {
             power_preference: wgpu::PowerPreference::HighPerformance,
             force_fallback_adapter: false,
             compatible_surface: surface,
+            ..Default::default()
         }))
         .context("no suitable GPU adapter")?;
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
@@ -48,7 +50,7 @@ impl Gpu {
             ..Default::default()
         }))
         .context("creating GPU device")?;
-        Ok(Self { instance, adapter, device, queue })
+        Ok(Self { _instance: instance, adapter, device, queue })
     }
 }
 
@@ -232,7 +234,7 @@ impl Renderer {
 
         let mut pixels = Vec::with_capacity((row_bytes * self.height) as usize);
         {
-            let data = slice.get_mapped_range();
+            let data = slice.get_mapped_range().context("reading readback buffer")?;
             for row in data.chunks_exact(padded_row as usize) {
                 pixels.extend_from_slice(&row[..row_bytes as usize]);
             }

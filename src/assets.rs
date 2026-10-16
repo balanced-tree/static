@@ -68,7 +68,7 @@ fn warn_if_upscaled(path: &Path, scale: f64, width: u32, height: u32) {
         eprintln!(
             "warning: {} is upscaled {scale:.2}× to {width}×{height}{}",
             path.display(),
-            if scale > 1.5 { " (consider `soften`, or a higher-resolution photo)" } else { "" }
+            if scale > 1.5 { " (it may look soft; a higher-resolution photo would be sharper)" } else { "" }
         );
     }
 }

@@ -94,7 +94,7 @@ impl State {
         self.blit.encode(&mut encoder, &view, (self.config.width, self.config.height));
         self.gpu.queue.submit([encoder.finish()]);
         self.window.pre_present_notify();
-        surface_texture.present();
+        self.gpu.queue.present(surface_texture);
         Ok(())
     }
 }
