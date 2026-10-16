@@ -51,6 +51,16 @@ impl Stillness {
         }
     }
 
+    /// `mode = "..."` in `timeline.toml` (same names as `--stillness`).
+    pub fn parse_mode(name: &str) -> Option<StillnessMode> {
+        match name.replace('-', "_").as_str() {
+            "still_at_rest" => Some(StillnessMode::StillAtRest),
+            "always_restless" => Some(StillnessMode::AlwaysRestless),
+            "inverted" => Some(StillnessMode::Inverted),
+            _ => None,
+        }
+    }
+
     fn map(&self, amount: f32) -> f32 {
         let v = self.baseline + (1.0 - self.baseline) * self.shape(amount);
         if self.invert { 1.0 - v } else { v }
@@ -66,8 +76,6 @@ impl Stillness {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Look {
-    /// The preset this look started from (its values may since be tuned).
-    pub preset: StillnessMode,
     pub snow: Weights,
     pub jitter: Weights,
     pub tear: Weights,
@@ -76,15 +84,10 @@ pub struct Look {
 }
 
 impl Look {
+    /// The default mixes (see `params::SPECS`) with a stillness preset.
+    #[cfg(test)]
     pub fn new(mode: StillnessMode) -> Self {
-        Self {
-            preset: mode,
-            snow: Weights { hiss: 0.6, click: 0.1, loud: 0.5 },
-            jitter: Weights { hiss: 0.4, click: 0.2, loud: 0.6 },
-            tear: Weights { hiss: 0.0, click: 0.8, loud: 0.4 },
-            chroma: Weights { hiss: 0.0, click: 0.6, loud: 0.3 },
-            stillness: Stillness::preset(mode),
-        }
+        Self { stillness: Stillness::preset(mode), ..crate::params::Params::default().look() }
     }
 
     pub fn disturbance(&self, f: &FeatureFrame) -> Disturbance {
