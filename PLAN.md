@@ -137,7 +137,9 @@ Each disturbance layer takes a weighted sum of the features. The weights are key
 | Tear strength | 0.0 | 0.8 | 0.4 |
 | Chroma split | 0.0 | 0.6 | 0.3 |
 
-Each sum then goes through the stillness mapping below.
+Each sum then goes through the stillness mapping below. This all runs on the CPU per frame (`src/look.rs`); the shaders only receive the final `snow` and `jitter` amounts.
+
+Snow is grain over the photo at low amounts and takes over from ~0.45 upwards, but stops at ~88 % coverage. Like a weak TV signal, a ghost of the object stays visible even at full disturbance. Pure static is reserved for `scene = "static"`.
 
 ### The "stillness" control (tunable, per §1)
 
@@ -149,7 +151,7 @@ One shared mapping decides how audio energy becomes disturbance. It supports the
 | `always_restless` | A floor of static is always present (`baseline > 0`). Energy pushes it into heavy interference. |
 | `inverted` | Static is the default. The object *resolves* out of noise when the signal drops, or on cue. |
 
-In practice these are a `baseline`, a `response` curve and an `invert` flag, and all three can be keyframed. The piece can therefore drift between modes over its duration.
+In practice these are a `baseline`, a `response` curve and an `invert` flag, and all three can be keyframed. Until the timeline exists, `--stillness still-at-rest|always-restless|inverted` picks a preset. The piece can therefore drift between modes over its duration.
 
 ---
 
@@ -331,7 +333,7 @@ Static/
 
 1. ✅ **Skeleton:** cargo project, CLI, `wgpu` renders a photo to a window and headlessly to PNG.
 2. ✅ **Analysis:** decode, STFT, hiss + click + loudness (+ optional hum) features → `features.bin`, plus an SVG debug plot.
-3. **Snow + jitter:** first audio-reactive shader layers on one photo.
+3. ✅ **Snow + jitter:** first audio-reactive shader layers on one photo, plus the disturbance mix and stillness modes.
 4. **Preview app:** audio playback, scrubbing, egui sliders.
 5. **Tears + CRT:** click-driven displacement, scanlines, persistence.
 6. **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
