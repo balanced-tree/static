@@ -161,8 +161,10 @@ impl State {
             pixels_per_point: ppp,
         };
         let primitives = ctx.tessellate(output.shapes, ppp);
-        for (id, delta) in &output.textures_delta.set {
-            self.egui_renderer.update_texture(device, queue, *id, delta);
+        for (id, deltas) in &output.textures_delta.set {
+            for delta in deltas {
+                self.egui_renderer.update_texture(device, queue, *id, delta);
+            }
         }
         let egui_commands = self.egui_renderer.update_buffers(device, queue, &mut encoder, &primitives, &screen);
         {
