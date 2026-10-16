@@ -334,7 +334,7 @@ Static/
 1. ✅ **Skeleton:** cargo project, CLI, `wgpu` renders a photo to a window and headlessly to PNG.
 2. ✅ **Analysis:** decode, STFT, hiss + click + loudness (+ optional hum) features → `features.bin`, plus an SVG debug plot.
 3. ✅ **Snow + jitter:** first audio-reactive shader layers on one photo, plus the disturbance mix and stillness modes.
-4. **Preview app:** audio playback, scrubbing, egui sliders.
+4. ✅ **Preview app:** audio playback, scrubbing, egui sliders.
 5. **Tears + CRT:** click-driven displacement, scanlines, persistence.
 6. **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
 7. **Export:** ffmpeg pipe, YouTube-ready MP4, chunked/resumable renders, YouTube-bitrate excerpt check.
