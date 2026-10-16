@@ -49,7 +49,8 @@ fn displace(screen: vec2<f32>) -> Displaced {
 
     let t = globals.tear;
     var dx = 0.0;
-    var block_uv = vec2<f32>(-1.0);
+    var blocked = false;
+    var block_uv = vec2<f32>(0.0);
 
     // Loose tracking bands, re-rolled every second frame.
     let hold = globals.frame / 2u;
@@ -83,10 +84,11 @@ fn displace(screen: vec2<f32>) -> Displaced {
                 let mosaic = (floor(fract(uv / size) * 4.0) + 0.5) / 4.0;
                 let jump = round((bh.yz - 0.5) * vec2<f32>(6.0, 2.0));
                 block_uv = (b + jump + mosaic) * size;
+                blocked = true;
             }
         }
     }
 
-    out.uv = select(uv + vec2<f32>(dx, 0.0), block_uv, block_uv.x >= 0.0 || block_uv.y >= 0.0);
+    out.uv = select(uv + vec2<f32>(dx, 0.0), block_uv, blocked);
     return out;
 }
