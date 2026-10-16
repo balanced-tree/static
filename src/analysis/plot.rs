@@ -47,7 +47,13 @@ pub fn write_svg(features: &Features, smoothing: &SmoothingParams, title: &str, 
     )?;
 
     // Time grid.
-    let step = if features.duration > 300.0 { 60.0 } else if features.duration > 60.0 { 30.0 } else { 5.0 };
+    let step = if features.duration > 300.0 {
+        60.0
+    } else if features.duration > 60.0 {
+        30.0
+    } else {
+        5.0
+    };
     let bottom = TOP + lanes.len() as f32 * (LANE + GAP) - GAP;
     let mut t = 0.0;
     while t <= features.duration {
@@ -77,13 +83,18 @@ pub fn write_svg(features: &Features, smoothing: &SmoothingParams, title: &str, 
             let (mut top, mut bot) = (String::new(), String::new());
             for c in 0..cols {
                 let (a, b) = range(c);
-                let slice = &raw[a.min(raw.len())..b.min(raw.len())];
+                // One frame of overlap so neighbouring columns join up, even
+                // when there are fewer frames than columns.
+                let slice = &raw[a.min(raw.len() - 1)..(b + 1).min(raw.len())];
                 let (lo, hi) = slice.iter().fold((1.0f32, 0.0f32), |(lo, hi), &v| (lo.min(v), hi.max(v)));
                 let x = LEFT + c as f32 + 0.5;
                 write!(top, "{x:.1},{:.1} ", y_of(hi))?;
                 bot.insert_str(0, &format!("{x:.1},{:.1} ", y_of(lo)));
             }
-            writeln!(s, r#"<polygon points="{top}{bot}" fill="{colour}" fill-opacity="0.25"/>"#)?;
+            writeln!(
+                s,
+                r#"<polygon points="{top}{bot}" fill="{colour}" fill-opacity="0.3" stroke="{colour}" stroke-opacity="0.5" stroke-width="0.5"/>"#
+            )?;
         }
         if !line.is_empty() {
             let mut pts = String::new();

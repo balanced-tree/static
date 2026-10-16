@@ -37,6 +37,9 @@ enum Command {
         width: u32,
         #[arg(long, default_value_t = 2160)]
         height: u32,
+        /// Features file from `analyse`; prints the values at this frame.
+        #[arg(long)]
+        features: Option<PathBuf>,
     },
     /// Open the live preview window.
     Preview {
@@ -54,8 +57,9 @@ enum Command {
         /// Features file to write. Default: out/<wav name>.features.bin
         #[arg(short, long)]
         out: Option<PathBuf>,
-        /// Lower = more clicks detected (multiple of the local median flux).
-        #[arg(long, default_value_t = 1.5)]
+        /// Click sensitivity: how far above the local flux level a click must
+        /// rise, in robust standard deviations. Lower = more clicks.
+        #[arg(long, default_value_t = 4.0)]
         click_threshold: f32,
         /// Skip writing the SVG plot next to the features file.
         #[arg(long)]
@@ -102,8 +106,23 @@ fn parse_focus(s: &str) -> Result<[f32; 2], String> {
 
 fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Frame { scene, frame, out, width, height } => {
+        Command::Frame { scene, frame, out, width, height, features } => {
             let started = Instant::now();
+            if let Some(path) = features {
+                let features = analysis::Features::load(&path)?;
+                let values = features.frames(&analysis::SmoothingParams::default());
+                let v = values
+                    .get(frame as usize)
+                    .with_context(|| format!("frame {frame} is past the end of the audio ({} frames)", values.len()))?;
+                println!(
+                    "frame {frame} ({:.2} s): hiss {:.3} · click {:.3} · loud {:.3} · hum {:.3}",
+                    frame as f32 / FPS,
+                    v.hiss,
+                    v.click,
+                    v.loud,
+                    v.hum
+                );
+            }
             let photo = scene.load(width, height)?;
             let gpu = Gpu::new(Gpu::instance(), None)?;
             let renderer = Renderer::new(&gpu, &photo, FPS);

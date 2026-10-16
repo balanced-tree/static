@@ -11,7 +11,7 @@ mod plot;
 mod spectral;
 
 pub use decode::Audio;
-pub use features::{ClickEvent, Envelope, FeatureFrame, Features, SmoothingParams};
+pub use features::{ClickEvent, FeatureFrame, Features, SmoothingParams};
 pub use plot::write_svg;
 
 use std::path::Path;
@@ -20,8 +20,8 @@ use anyhow::Result;
 
 pub struct AnalysisParams {
     pub fps: f32,
-    /// Multiple of the local median spectral flux a click must exceed.
-    /// Lower = more clicks detected.
+    /// How far above the local flux level (in robust standard deviations) a
+    /// click must rise. Lower = more clicks detected.
     pub click_threshold: f32,
 }
 
@@ -90,7 +90,7 @@ mod tests {
     #[test]
     fn features_follow_the_test_signal() {
         let fps = 25.0;
-        let f = analyse_audio(&test_signal(), &AnalysisParams { fps, click_threshold: 1.5 });
+        let f = analyse_audio(&test_signal(), &AnalysisParams { fps, click_threshold: 4.0 });
         assert_eq!(f.frame_count(), 300);
 
         // Digital silence reads as nothing at all.
@@ -119,7 +119,7 @@ mod tests {
     #[test]
     fn click_envelope_peaks_on_the_click_frame() {
         let fps = 25.0;
-        let f = analyse_audio(&test_signal(), &AnalysisParams { fps, click_threshold: 1.5 });
+        let f = analyse_audio(&test_signal(), &AnalysisParams { fps, click_threshold: 4.0 });
         let frames = f.frames(&SmoothingParams::default());
         let at = |t: f32| frames[(t * fps) as usize].click;
         assert!(at(9.0) > 0.5, "click frame {}", at(9.0));

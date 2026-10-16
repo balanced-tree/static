@@ -42,8 +42,7 @@ struct Spectrum {
 impl Spectrum {
     fn new(len: usize) -> Self {
         let fft = RealFftPlanner::<f32>::new().plan_fft_forward(len);
-        let window =
-            (0..len).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / len as f32).cos()).collect();
+        let window = (0..len).map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / len as f32).cos()).collect();
         let (input, output) = (fft.make_input_vec(), fft.make_output_vec());
         let power = vec![0.0; output.len()];
         Self { fft, window, input, output, power }

@@ -193,9 +193,8 @@ impl Features {
         let (fps, duration) = (r.f32()?, r.f32()?);
         let mut series = || (0..frames).map(|_| r.f32()).collect::<Result<Vec<_>>>();
         let (loud, hiss, flatness, hiband, hum) = (series()?, series()?, series()?, series()?, series()?);
-        let clicks = (0..clicks)
-            .map(|_| Ok(ClickEvent { time: r.f32()?, strength: r.f32()? }))
-            .collect::<Result<Vec<_>>>()?;
+        let clicks =
+            (0..clicks).map(|_| Ok(ClickEvent { time: r.f32()?, strength: r.f32()? })).collect::<Result<Vec<_>>>()?;
         ensure!(r.pos == bytes.len(), "{} has trailing data", path.display());
         Ok(Self { fps, sample_rate, duration, loud, hiss, flatness, hiband, hum, clicks })
     }
