@@ -328,7 +328,7 @@ Static/
 
 ## 11. Milestones
 
-1. **Skeleton:** cargo project, CLI, `wgpu` renders a photo to a window and headlessly to PNG.
+1. ✅ **Skeleton:** cargo project, CLI, `wgpu` renders a photo to a window and headlessly to PNG.
 2. **Analysis:** decode, STFT, hiss + click features → `features.bin`, plus a debug plot or meter overlay to check them.
 3. **Snow + jitter:** first audio-reactive shader layers on one photo.
 4. **Preview app:** audio playback, scrubbing, egui sliders.
