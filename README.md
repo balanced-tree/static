@@ -7,7 +7,7 @@ See [PLAN.md](PLAN.md) for the full design and milestones.
 ## Requirements
 
 - Rust (stable)
-- `ffmpeg` on your `PATH` (only needed for video export, milestone 7)
+- `ffmpeg` on your `PATH` for `render` (macOS: `brew install ffmpeg`)
 
 ## Usage
 
@@ -24,6 +24,11 @@ cargo run -- preview
 # Render frames headlessly to PNGs (4K by default; prints the feature values and disturbance)
 cargo run -- frame --frame 1500
 cargo run -- frame --frame 1500 --count 25          # out/frame_001500.png, out/frame_001501.png, …
+
+# The video: 4K H.264 + AAC MP4 for YouTube → out/still_charged.mp4
+cargo run --release -- render
+cargo run --release -- render --from 3:00 --to 3:30 -o out/test.mp4   # an excerpt (frames or times)
+cargo run --release -- render --preview-youtube --from 6:05           # 20 s at YouTube-like bitrates
 
 # Without a timeline: one photo (or the test card), no intro/outro/title
 cargo run -- preview --photo photos/di_box.jpg --audio audio/still_charged.wav
@@ -46,6 +51,8 @@ Options shared by `frame` and `preview`:
 | `--fit fill\|contain` | Without a timeline: `fill` crops to 16:9, `contain` letterboxes. |
 | `--focus x,y` | Without a timeline: crop centre for `fill`, normalised 0..1. |
 | `--stillness <mode>` | Without a timeline: `still-at-rest` (default), `always-restless` or `inverted`. |
+
+**Render.** Frames are encoded in 60 s chunks (`--chunk`) under `out/<name>.chunks/`, then joined without re-encoding and muxed with the original audio. An interrupted render picks up where it stopped when you run the same command again. If the timeline, photos, audio, font, shaders or encoder settings changed in between, it starts over rather than mixing old and new chunks. Output is H.264 `yuv420p` BT.709 (CRF 14, `--preset slow`); `--codec h265` gives a smaller file, `--crf` trades size for quality, and `--audio-copy` puts lossless PCM audio in a `.mov`. `--preview-youtube` writes `<name>.youtube-1080p.mp4` and `-2160p.mp4` at roughly YouTube's bitrates (8 and 25 Mbit/s, x264, so a little harsher than YouTube's VP9/AV1), to check that the snow doesn't collapse into mush; fewer `snow = { rows }` survives better.
 
 `frame` also takes `--frame N`, `--count N`, `-o/--out`, `--width` and `--height` (default 3840×2160).
 `preview` renders internally at `--width`/`--height` (default 1920×1080) and scales the result to the window.
