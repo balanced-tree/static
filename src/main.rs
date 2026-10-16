@@ -1,3 +1,4 @@
+mod analysis;
 mod assets;
 mod preview;
 mod renderer;
@@ -47,8 +48,19 @@ enum Command {
         #[arg(long, default_value_t = 1080)]
         height: u32,
     },
-    /// Analyse the WAV into per-frame features (milestone 2).
-    Analyse,
+    /// Analyse a WAV into per-frame features, plus a debug plot.
+    Analyse {
+        wav: PathBuf,
+        /// Features file to write. Default: out/<wav name>.features.bin
+        #[arg(short, long)]
+        out: Option<PathBuf>,
+        /// Lower = more clicks detected (multiple of the local median flux).
+        #[arg(long, default_value_t = 1.5)]
+        click_threshold: f32,
+        /// Skip writing the SVG plot next to the features file.
+        #[arg(long)]
+        no_plot: bool,
+    },
     /// Render the full video (milestone 7).
     Render,
 }
@@ -105,7 +117,32 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::Preview { scene, width, height } => preview::run(scene.load(width, height)?),
-        Command::Analyse => bail!("`analyse` is not implemented yet (milestone 2)"),
+        Command::Analyse { wav, out, click_threshold, no_plot } => {
+            let started = Instant::now();
+            let params = analysis::AnalysisParams { fps: FPS, click_threshold };
+            let features = analysis::analyse(&wav, &params)?;
+            let stem = wav.file_stem().map_or("audio".into(), |s| s.to_string_lossy().into_owned());
+            let out = out.unwrap_or_else(|| PathBuf::from(format!("out/{stem}.features.bin")));
+            if let Some(dir) = out.parent() {
+                std::fs::create_dir_all(dir)?;
+            }
+            features.save(&out)?;
+            println!(
+                "analysed {} in {:.2?}: {:.1} s, {} frames, {} clicks",
+                wav.display(),
+                started.elapsed(),
+                features.duration,
+                features.frame_count(),
+                features.clicks.len()
+            );
+            println!("wrote {}", out.display());
+            if !no_plot {
+                let plot = out.with_extension("svg");
+                analysis::write_svg(&features, &analysis::SmoothingParams::default(), &stem, &plot)?;
+                println!("wrote {}", plot.display());
+            }
+            Ok(())
+        }
         Command::Render => bail!("`render` is not implemented yet (milestone 7)"),
     }
 }
