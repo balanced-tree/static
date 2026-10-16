@@ -63,7 +63,7 @@ enum Command {
         out: Option<PathBuf>,
         /// Click sensitivity: how far above the local flux level a click must
         /// rise, in robust standard deviations. Lower = more clicks.
-        #[arg(long, default_value_t = 4.0)]
+        #[arg(long, default_value_t = analysis::DEFAULT_CLICK_THRESHOLD)]
         click_threshold: f32,
         /// Skip writing the SVG plot next to the features file.
         #[arg(long)]
@@ -76,7 +76,12 @@ enum Command {
 /// What to show and how it reacts. Replaced by `timeline.toml` in milestone 6.
 #[derive(Args)]
 struct SceneArgs {
-    /// Features file from `analyse`. Without it the photo stays at rest.
+    /// The WAV. Played back in the preview; analysed on the fly if no
+    /// `--features` file is given.
+    #[arg(long)]
+    audio: Option<PathBuf>,
+    /// Features file from `analyse`. Without it (and without `--audio`) the
+    /// photo stays at rest.
     #[arg(long)]
     features: Option<PathBuf>,
     /// How signal energy maps to disturbance.
@@ -104,9 +109,33 @@ impl SceneArgs {
         RenderSettings { fps: FPS, seed: self.seed, snow_rows: self.snow_rows }
     }
 
-    fn show(&self) -> Result<Show> {
-        let features = self.features.as_deref().map(analysis::Features::load).transpose()?;
-        Ok(Show::new(features.as_ref(), Look::new(self.stillness)))
+    fn audio(&self) -> Result<Option<analysis::Interleaved>> {
+        self.audio.as_deref().map(analysis::read_wav).transpose()
+    }
+
+    fn show(&self, audio: Option<&analysis::Interleaved>) -> Result<Show> {
+        let features = match (&self.features, audio) {
+            (Some(path), _) => Some(analysis::Features::load(path)?),
+            (None, Some(audio)) => {
+                let started = Instant::now();
+                let params =
+                    analysis::AnalysisParams { fps: FPS, click_threshold: analysis::DEFAULT_CLICK_THRESHOLD };
+                let features = analysis::analyse_audio(&audio.to_mono(), &params);
+                eprintln!("analysed audio in {:.2?} ({} clicks)", started.elapsed(), features.clicks.len());
+                Some(features)
+            }
+            (None, None) => None,
+        };
+        if let (Some(f), Some(a)) = (&features, audio)
+            && (f.duration as f64 - a.duration()).abs() > 0.1
+        {
+            eprintln!(
+                "warning: features are {:.1} s long but the audio is {:.1} s — made from a different file?",
+                f.duration,
+                a.duration()
+            );
+        }
+        Ok(Show::new(features, Look::new(self.stillness)))
     }
 
     fn photo(&self, width: u32, height: u32) -> Result<image::RgbaImage> {
@@ -140,7 +169,7 @@ fn main() -> Result<()> {
     match Cli::parse().command {
         Command::Frame { scene, frame, count, out, width, height } => {
             let started = Instant::now();
-            let show = scene.show()?;
+            let show = scene.show(scene.audio()?.as_ref())?;
             let gpu = Gpu::new(Gpu::instance(), None)?;
             let renderer = Renderer::new(&gpu, &scene.photo(width, height)?, scene.settings());
             if let Some(dir) = out.parent() {
@@ -151,7 +180,7 @@ fn main() -> Result<()> {
                 renderer.render(&gpu, &inputs);
                 let path = if count == 1 { out.clone() } else { numbered(&out, index) };
                 renderer.read_frame(&gpu)?.save(&path).with_context(|| format!("writing {}", path.display()))?;
-                let (f, d) = (show.features(index), inputs.disturbance);
+                let (f, d) = (show.features_at(index), inputs.disturbance);
                 println!(
                     "frame {index} ({:.2} s): hiss {:.2} click {:.2} loud {:.2} → snow {:.2} jitter {:.2}  {}",
                     index as f32 / FPS,
@@ -170,7 +199,9 @@ fn main() -> Result<()> {
             Ok(())
         }
         Command::Preview { scene, width, height } => {
-            preview::run(scene.photo(width, height)?, scene.show()?, scene.settings())
+            let audio = scene.audio()?;
+            let show = scene.show(audio.as_ref())?;
+            preview::run(scene.photo(width, height)?, show, scene.settings(), audio)
         }
         Command::Analyse { wav, out, click_threshold, no_plot } => {
             let started = Instant::now();

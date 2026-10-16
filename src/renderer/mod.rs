@@ -185,6 +185,11 @@ impl Renderer {
         Self { width, height, settings, pipeline, bind_group, globals, target, target_view }
     }
 
+    /// Settings are read every frame, so the preview can change them live.
+    pub fn set_settings(&mut self, settings: RenderSettings) {
+        self.settings = settings;
+    }
+
     pub fn size(&self) -> (u32, u32) {
         (self.width, self.height)
     }
