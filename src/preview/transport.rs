@@ -8,13 +8,16 @@ use crate::analysis::Interleaved;
 
 enum Clock {
     Audio(Player),
-    /// `started` is set while playing; position = base + time since started.
+    /// `started` is set while running; position = base + time since started.
     Wall { base: f64, started: Option<Instant> },
 }
 
 pub struct Transport {
     clock: Clock,
     duration: Option<f64>,
+    /// What the user asked for. The audio clock can stop by itself when the
+    /// file runs out; `update` then loops or settles into paused.
+    playing: bool,
     pub looping: bool,
     pub loop_in: Option<f64>,
     pub loop_out: Option<f64>,
@@ -32,7 +35,7 @@ impl Transport {
             }
             None => Clock::Wall { base: 0.0, started: None },
         };
-        let mut transport = Self { clock, duration, looping: true, loop_in: None, loop_out: None };
+        let mut transport = Self { clock, duration, playing: false, looping: true, loop_in: None, loop_out: None };
         transport.set_playing(true);
         transport
     }
@@ -53,29 +56,20 @@ impl Transport {
     }
 
     pub fn playing(&self) -> bool {
-        match &self.clock {
-            Clock::Audio(p) => p.playing(),
-            Clock::Wall { started, .. } => started.is_some(),
-        }
+        self.playing
     }
 
     pub fn set_playing(&mut self, playing: bool) {
-        let position = self.position();
-        match &mut self.clock {
-            Clock::Audio(p) => p.set_playing(playing),
-            Clock::Wall { base, started } => {
-                *base = position;
-                *started = playing.then(Instant::now);
-            }
-        }
+        self.playing = playing;
+        self.run_clock(playing);
     }
 
     pub fn toggle(&mut self) {
         let (start, end) = self.loop_range();
-        if !self.playing() && end.is_some_and(|end| self.position() >= end - 1e-3) {
+        if !self.playing && end.is_some_and(|end| self.position() >= end - 1e-3) {
             self.seek(start);
         }
-        self.set_playing(!self.playing());
+        self.set_playing(!self.playing);
     }
 
     pub fn seek(&mut self, secs: f64) {
@@ -102,22 +96,64 @@ impl Transport {
     /// Call once per frame: wraps around the loop or stops at the end.
     pub fn update(&mut self) {
         let (start, Some(end)) = self.loop_range() else { return };
-        let position = self.position();
-        let ended = position >= end || (self.has_audio() && !self.playing() && self.at_audio_end());
-        if !ended {
+        if !self.playing {
             return;
         }
-        if self.looping && (self.playing() || self.at_audio_end()) {
+        let ran_out = match &self.clock {
+            Clock::Audio(p) => !p.playing(),
+            Clock::Wall { .. } => false,
+        };
+        if self.position() < end && !ran_out {
+            return;
+        }
+        if self.looping {
             self.seek(start);
-            self.set_playing(true);
-        } else if position >= end && self.playing() {
+            self.run_clock(true);
+        } else {
             self.set_playing(false);
             self.seek(end);
         }
     }
 
-    /// The audio callback stops by itself when the file runs out.
-    fn at_audio_end(&self) -> bool {
-        self.duration.is_some_and(|d| self.position() >= d - 0.05)
+    fn run_clock(&mut self, run: bool) {
+        let position = self.position();
+        match &mut self.clock {
+            Clock::Audio(p) => p.set_playing(run),
+            Clock::Wall { base, started } => {
+                *base = position;
+                *started = run.then(Instant::now);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wall_clock_seeks_pauses_and_stops_at_the_end() {
+        let mut t = Transport::new(None, Some(10.0));
+        t.looping = false;
+        t.set_playing(false);
+        t.seek(4.0);
+        assert_eq!(t.position(), 4.0);
+        t.seek(99.0);
+        assert_eq!(t.position(), 10.0, "seek clamps to the duration");
+        t.set_playing(true);
+        t.update();
+        assert!(!t.playing(), "stops at the end when not looping");
+        t.toggle();
+        assert!(t.playing() && t.position() < 1.0, "play from the end restarts");
+    }
+
+    #[test]
+    fn loop_range_wraps() {
+        let mut t = Transport::new(None, Some(10.0));
+        t.loop_in = Some(2.0);
+        t.loop_out = Some(5.0);
+        t.seek(6.0);
+        t.update();
+        assert!((2.0..2.5).contains(&t.position()), "jumped back to the loop start: {}", t.position());
     }
 }
