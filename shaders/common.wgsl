@@ -1,4 +1,4 @@
-// Per-frame values shared by every scene pass. Must match `Globals` in
+// Per-frame values shared by every pass. Must match `Globals` in
 // src/renderer/mod.rs.
 
 struct Globals {
@@ -12,6 +12,20 @@ struct Globals {
     // in rows (not pixels) so preview and 4K render show the same pattern.
     snow_rows: f32,
     seed: u32,
+    // Click-driven displacement (see src/tears.rs): overall tear amount,
+    // RGB split, vertical roll (fraction of frame height) and how many of
+    // `events` are valid.
+    tear: f32,
+    chroma: f32,
+    roll: f32,
+    event_count: u32,
+    // CRT treatment, each 0..1 (0 = off).
+    scanlines: f32,
+    vignette: f32,
+    bloom: f32,
+    persistence: f32,
+    // Per click, newest first: (seed, intensity now, click strength, unused).
+    events: array<vec4<f32>, 4>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
