@@ -179,7 +179,7 @@ Hand-authored and hot-reloaded in preview. Keyframes interpolate (linear or ease
 - The outro has its own `crossfade` (default 6 s) for the transition at `begin`. `end_on` replaces the **final second** of the video: black, static, or `cut` (no change).
 - `black` is a dead screen and `freeze` holds the last photo perfectly still. Both turn the signal's disturbance off, fading it across the transition.
 - Typos are errors (unknown keys, groups or values), so a misspelt setting never silently does nothing. Missing photos, audio or fonts are warnings, so a half-finished timeline still previews.
-- Parameters per cue: `stillness`, `snow_mix`, `jitter_mix`, `tear_mix`, `chroma_mix`, `hiss`/`loud` (`attack`, `release`, `gain`, `curve`), `clicks` (`decay`, `gain`), `snow` (`rows`), `crt`, `colour`. One table in `src/params.rs` defines them all.
+- Parameters per cue: `stillness`, `snow_mix`, `jitter_mix`, `tear_mix`, `chroma_mix` (each `hiss`, `click`, `loud` weights plus a `threshold`: mixes below it give nothing, the rest is stretched back to 0..1), `hiss`/`loud` (`attack`, `release`, `gain`, `curve`), `clicks` (`decay`, `gain`), `snow` (`rows`), `crt`, `colour`. One table in `src/params.rs` defines them all.
 - Not built: Ken Burns drift and the mains-hum shimmer (both optional in this plan).
 
 Each cue shows one **scene**:
