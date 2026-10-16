@@ -6,7 +6,7 @@
 # material exists.
 
 [meta]
-audio = "audio/still_charged.wav"
+audio = "audio/Still, charged WIP.wav"
 # features = "out/still_charged.features.bin"   # else analysed on the fly
 fps = 25
 seed = 1234
@@ -19,12 +19,16 @@ resolve = "8s"                    # transition into the first cue's photo, start
 transition = "noise_dissolve"     # "noise_dissolve" | "dissolve" | "cut"
 # Parameter groups work here too, as the starting values:
 # stillness = { mode = "always_restless" }
+colour = { saturation = 0.0 }     # black and white throughout
+# Soft passages shouldn't shake the picture: no jitter below the threshold,
+# and less hiss in the mix (hiss is high even when the sound is quiet).
+jitter_mix = { hiss = 0.2, click = 0.2, loud = 0.8, threshold = 0.4 }
 
 [title]
 text = "still, charged"
 subtitle = ""
-font = "fonts/title.ttf"          # any TTF/OTF
-size = 0.045                      # cap height, fraction of frame height
+font = "fonts/Irritation.ttf"          # any TTF/OTF
+size = 0.1                      # cap height, fraction of frame height
 subtitle_size = 0.022
 position = [0.5, 0.5]             # normalised centre
 align = "center"                  # "left" | "center" | "right"
@@ -46,31 +50,30 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 #
 # Parameter groups (the preview's sliders, and "Copy as TOML", use the same names):
 #   stillness  = { mode = "still_at_rest" | "always_restless" | "inverted", baseline, response, invert }
-#   snow_mix / jitter_mix / tear_mix / chroma_mix = { hiss, click, loud }
+#   snow_mix / jitter_mix / tear_mix / chroma_mix = { hiss, click, loud, threshold }
 #   hiss / loud = { attack, release, gain, curve }      clicks = { decay, gain }
 #   snow = { rows }     crt = { scanlines, vignette, bloom, persistence }
 #   colour = { saturation, chroma_split, contrast, black_level, tint = "#rrggbb" }
 
 [[cue]]
 at = "0:18"
-photo = "photos/di_box.jpg"
+photo = "photos/1.jpeg"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
 stillness = { mode = "still_at_rest" }
-colour = { saturation = 0.0 }
 
 [[cue]]
-at = "3:10"
-photo = "photos/light_switch.jpg"
+at = "1:10"
+photo = "photos/2.jpeg"
 crossfade = "12s"
 transition = "noise_dissolve"
 stillness = { baseline = 0.15 }
 ramp = "12s"
 
 [[cue]]
-at = "6:05"
-colour = { saturation = 0.3, chroma_split = 1.5 }
+at = "2:05"
+colour = { chroma_split = 1.5 }   # stays grey: saturation is 0 throughout
 hiss = { gain = 1.4, release = "800ms" }
 ramp = "next"
 
