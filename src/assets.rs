@@ -24,9 +24,7 @@ pub struct Framing {
 }
 
 pub fn load_photo(path: &Path, width: u32, height: u32, framing: &Framing) -> Result<RgbaImage> {
-    let src = image::open(path)
-        .with_context(|| format!("opening photo {}", path.display()))?
-        .to_rgba8();
+    let src = image::open(path).with_context(|| format!("opening photo {}", path.display()))?.to_rgba8();
     Ok(frame_photo(&src, width, height, framing, path))
 }
 

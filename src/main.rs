@@ -80,10 +80,8 @@ impl SceneArgs {
 }
 
 fn parse_focus(s: &str) -> Result<[f32; 2], String> {
-    let parts: Vec<f32> = s
-        .split(',')
-        .map(|p| p.trim().parse::<f32>().map_err(|e| e.to_string()))
-        .collect::<Result<_, _>>()?;
+    let parts: Vec<f32> =
+        s.split(',').map(|p| p.trim().parse::<f32>().map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
     match parts[..] {
         [x, y] if (0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y) => Ok([x, y]),
         _ => Err("expected `x,y` with both values in 0..1".into()),
@@ -103,11 +101,7 @@ fn main() -> Result<()> {
                 std::fs::create_dir_all(dir)?;
             }
             image.save(&out).with_context(|| format!("writing {}", out.display()))?;
-            println!(
-                "wrote {} ({width}×{height}, frame {frame}) in {:.2?}",
-                out.display(),
-                started.elapsed()
-            );
+            println!("wrote {} ({width}×{height}, frame {frame}) in {:.2?}", out.display(), started.elapsed());
             Ok(())
         }
         Command::Preview { scene, width, height } => preview::run(scene.load(width, height)?),

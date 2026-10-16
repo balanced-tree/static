@@ -45,10 +45,9 @@ impl Gpu {
             ..Default::default()
         }))
         .context("no suitable GPU adapter")?;
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("static"),
-            ..Default::default()
-        }))
+        let (device, queue) = pollster::block_on(
+            adapter.request_device(&wgpu::DeviceDescriptor { label: Some("static"), ..Default::default() }),
+        )
         .context("creating GPU device")?;
         Ok(Self { _instance: instance, adapter, device, queue })
     }
@@ -113,11 +112,7 @@ impl Renderer {
 
         let globals = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("globals"),
-            contents: bytemuck::bytes_of(&Globals {
-                resolution: [width as f32, height as f32],
-                frame: 0,
-                fps,
-            }),
+            contents: bytemuck::bytes_of(&Globals { resolution: [width as f32, height as f32], frame: 0, fps }),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {

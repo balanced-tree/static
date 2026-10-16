@@ -2,10 +2,8 @@
 
 use super::{Gpu, fullscreen_pipeline, sampler_entry, texture_entry};
 
-const BLIT_SHADER: &str = concat!(
-    include_str!("../../shaders/fullscreen.wgsl"),
-    include_str!("../../shaders/blit.wgsl"),
-);
+const BLIT_SHADER: &str =
+    concat!(include_str!("../../shaders/fullscreen.wgsl"), include_str!("../../shaders/blit.wgsl"),);
 
 pub struct Blit {
     pipeline: wgpu::RenderPipeline,
