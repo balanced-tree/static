@@ -24,8 +24,32 @@ struct Globals {
     vignette: f32,
     bloom: f32,
     persistence: f32,
+    // Scenes (see src/timeline.rs): kind 0 static, 1 black, 2 photo; the
+    // transition (0 cut, 1 dissolve, 2 noise dissolve) from `from` to `to`.
+    from_kind: u32,
+    from_layer: u32,
+    to_kind: u32,
+    to_layer: u32,
+    transition: u32,
+    transition_seed: u32,
+    progress: f32,
+    soften: f32,
+    // Title: visibility, whether it is resolving through the static, and how
+    // much of it is part of the (disturbed) signal vs a clean overlay.
+    title_alpha: f32,
+    title_noise: u32,
+    title_disturb: f32,
+    // Colour grade; skipped entirely unless `grade_on`.
+    saturation: f32,
+    contrast: f32,
+    black_level: f32,
+    grade_on: u32,
+    _pad: u32,
     // Per click, newest first: (seed, intensity now, click strength, unused).
     events: array<vec4<f32>, 4>,
+    // Linear RGB.
+    title_colour: vec4<f32>,
+    tint: vec4<f32>,
 };
 
 @group(0) @binding(0) var<uniform> globals: Globals;
@@ -56,4 +80,23 @@ fn to_perceptual(c: vec3<f32>) -> vec3<f32> {
 
 fn to_linear(c: vec3<f32>) -> vec3<f32> {
     return pow(max(c, vec3<f32>(0.0)), vec3<f32>(2.2));
+}
+
+// The snow grid cell under `uv`. Wraps rather than clamps: torn and rolled
+// positions leave the frame.
+fn grid_cell(uv: vec2<f32>) -> vec2<u32> {
+    let rows = globals.snow_rows;
+    let cols = round(rows * globals.resolution.x / globals.resolution.y);
+    return vec2<u32>(fract(uv) * vec2<f32>(cols, rows));
+}
+
+// How much of the title shows at `uv`: a plain fade, or (while resolving
+// through the static) whole snow cells switching on in a fixed random order.
+fn title_reveal(uv: vec2<f32>) -> f32 {
+    let a = globals.title_alpha;
+    if (globals.title_noise == 0u || a <= 0.0 || a >= 1.0) {
+        return a;
+    }
+    let cell = grid_cell(uv);
+    return select(0.0, 1.0, hash3(cell.x, cell.y, 51u).x < a);
 }

@@ -1,6 +1,6 @@
-// Base scene: the framed photo (pre-sized on the CPU), displaced by jitter.
+// Photos (pre-framed on the CPU, one texture layer each), displaced by jitter.
 
-@group(0) @binding(1) var photo_tex: texture_2d<f32>;
+@group(0) @binding(1) var photo_tex: texture_2d_array<f32>;
 @group(0) @binding(2) var photo_smp: sampler;
 
 // Largest offsets at jitter = 1, as fractions of the frame height.
@@ -19,6 +19,6 @@ fn jittered_uv(uv: vec2<f32>) -> vec2<f32> {
     return uv + vec2<f32>((shake.x + wobble) / aspect, shake.y);
 }
 
-fn sample_photo(uv: vec2<f32>) -> vec3<f32> {
-    return textureSampleLevel(photo_tex, photo_smp, uv, 0.0).rgb;
+fn sample_photo(uv: vec2<f32>, layer: u32) -> vec3<f32> {
+    return textureSampleLevel(photo_tex, photo_smp, uv, layer, 0.0).rgb;
 }

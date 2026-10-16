@@ -228,13 +228,13 @@ pub struct TitleState {
     /// Appearing or vanishing cell by cell through the static, not fading.
     pub noise: bool,
     pub disturb: f32,
+    /// Linear RGB.
+    pub colour: [f32; 3],
 }
 
 /// `timeline.toml` as written, before it is placed against the audio.
 #[derive(Clone, Debug)]
 pub struct TimelineFile {
-    /// Paths in the file are relative to this.
-    pub dir: PathBuf,
     pub audio: Option<PathBuf>,
     pub features: Option<PathBuf>,
     pub seed: u32,
@@ -247,16 +247,15 @@ pub struct TimelineFile {
 impl TimelineFile {
     pub fn load(path: &Path) -> Result<Self> {
         let text = std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        let dir = path.parent().map(Path::to_path_buf).unwrap_or_default();
-        Self::parse(&text, &dir).with_context(|| format!("in {}", path.display()))
+        Self::parse(&text, path.parent().unwrap_or(Path::new(""))).with_context(|| format!("in {}", path.display()))
     }
 
+    /// Paths in the file are taken relative to `dir`.
     pub fn parse(text: &str, dir: &Path) -> Result<Self> {
         let mut doc: Table = text.parse().context("not valid TOML")?;
         let path = |p: &str| dir.join(p);
 
         let mut file = TimelineFile {
-            dir: dir.to_path_buf(),
             audio: None,
             features: None,
             seed: 1234,
@@ -453,7 +452,6 @@ impl TimelineFile {
             (P::Invert as usize, if stillness.invert { 1.0 } else { 0.0 }),
         ];
         TimelineFile {
-            dir: PathBuf::new(),
             audio: None,
             features: None,
             seed,
@@ -501,7 +499,6 @@ pub struct Marker {
 
 #[derive(Clone, Debug)]
 pub struct Timeline {
-    pub seed: u32,
     /// Texture layers, in order.
     pub photos: Vec<PhotoSpec>,
     pub title: Option<TitleSpec>,
@@ -627,7 +624,7 @@ impl Timeline {
             k.sort_by(|a, b| a.start.total_cmp(&b.start));
         }
         markers.sort_by(|a, b| a.time.total_cmp(&b.time));
-        Timeline { seed: file.seed, photos, title: file.title.clone(), markers, duration, scenes, keys }
+        Timeline { photos, title: file.title.clone(), markers, duration, scenes, keys }
     }
 
     /// Video length in seconds, including the outro tail.
@@ -689,7 +686,7 @@ impl Timeline {
             let x = (t - shown - title.hold) / title.vanish_time.max(1e-6);
             (1.0 - ramp(x, title.vanish), title.vanish)
         };
-        TitleState { alpha: alpha as f32, noise: mode == Reveal::Noise, disturb: title.disturb }
+        TitleState { alpha: alpha as f32, noise: mode == Reveal::Noise, disturb: title.disturb, colour: title.colour }
     }
 }
 
@@ -861,15 +858,11 @@ impl Section {
                 }
             }
             for (key, value) in t {
-                let i = params::find(group, &key)
-                    .filter(|&i| SPECS[i].kind != Kind::Channel)
-                    .with_context(|| {
-                        let known: Vec<_> = params::group(group)
-                            .map(|i| SPECS[i].key)
-                            .filter(|k| !k.contains('.'))
-                            .collect();
-                        format!("{}: unknown setting (known: {})", at(&key), known.join(", "))
-                    })?;
+                let i = params::find(group, &key).filter(|&i| SPECS[i].kind != Kind::Channel).with_context(|| {
+                    let known: Vec<_> =
+                        params::group(group).map(|i| SPECS[i].key).filter(|k| !k.contains('.')).collect();
+                    format!("{}: unknown setting (known: {})", at(&key), known.join(", "))
+                })?;
                 let v = match (SPECS[i].kind, &value) {
                     (Kind::Bool, Value::Boolean(b)) => f32::from(u8::from(*b)),
                     (Kind::Duration, v) => time_value(v).with_context(|| at(&key))? as f32,

@@ -1,0 +1,84 @@
+# still, charged: the timeline. Hot-reloaded by `static preview` on save.
+#
+# Times: "6s", "800ms", "3:10", "1:02:03.5" or a plain number of seconds.
+# Paths are relative to this file. Missing photos show the test card and a
+# missing font hides the title (with a warning), so this previews before the
+# material exists.
+
+[meta]
+audio = "audio/still_charged.wav"
+# features = "out/still_charged.features.bin"   # else analysed on the fly
+fps = 25
+seed = 1234
+
+# Opening: what shows before the first cue's photo, and how it resolves.
+[intro]
+scene = "static"                  # "static" | "black" | "photo" (first cue's photo from the start)
+hold = "10s"                      # how long it stays
+resolve = "8s"                    # transition into the first cue's photo, starting at `hold`
+transition = "noise_dissolve"     # "noise_dissolve" | "dissolve" | "cut"
+# Parameter groups work here too, as the starting values:
+# stillness = { mode = "always_restless" }
+
+[title]
+text = "still, charged"
+subtitle = ""
+font = "fonts/title.ttf"          # any TTF/OTF
+size = 0.045                      # cap height, fraction of frame height
+subtitle_size = 0.022
+position = [0.5, 0.5]             # normalised centre
+align = "center"                  # "left" | "center" | "right"
+colour = "#e6e6e6"
+letter_spacing = 0.08             # em
+appear = "2s"
+reveal = "noise"                  # "noise" (resolves out of the static) | "fade" | "cut"
+reveal_time = "2.5s"
+hold = "5s"
+vanish = "noise"
+vanish_time = "3s"
+disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves with the signal
+
+# Cues. A cue may change the scene (`photo`, or `scene = "static" | "black"`)
+# and/or any parameters. Scene changes start at `at` and take `crossfade`.
+# Parameters start moving at `at` and arrive after `ramp` ("4s" default;
+# "next" drifts until the next cue), shaped by `ease` ("smooth" | "linear" |
+# "step"). Anything a cue doesn't mention keeps its value.
+#
+# Parameter groups (the preview's sliders, and "Copy as TOML", use the same names):
+#   stillness  = { mode = "still_at_rest" | "always_restless" | "inverted", baseline, response, invert }
+#   snow_mix / jitter_mix / tear_mix / chroma_mix = { hiss, click, loud }
+#   hiss / loud = { attack, release, gain, curve }      clicks = { decay, gain }
+#   snow = { rows }     crt = { scanlines, vignette, bloom, persistence }
+#   colour = { saturation, chroma_split, contrast, black_level, tint = "#rrggbb" }
+
+[[cue]]
+at = "0:18"
+photo = "photos/di_box.jpg"
+fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
+focus = [0.45, 0.55]              # crop centre for "fill"
+# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+stillness = { mode = "still_at_rest" }
+colour = { saturation = 0.0 }
+
+[[cue]]
+at = "3:10"
+photo = "photos/light_switch.jpg"
+crossfade = "12s"
+transition = "noise_dissolve"
+stillness = { baseline = 0.15 }
+ramp = "12s"
+
+[[cue]]
+at = "6:05"
+colour = { saturation = 0.3, chroma_split = 1.5 }
+hiss = { gain = 1.4, release = "800ms" }
+ramp = "next"
+
+# Ending, relative to the end of the audio.
+[outro]
+scene = "static"                  # "static" | "black" | "freeze" (last photo, perfectly still)
+begin = "-10s"
+crossfade = "6s"
+transition = "noise_dissolve"
+tail = "3s"                       # extra video after the audio ends
+end_on = "black"                  # the final second: "black" | "static" | "cut" (no change)

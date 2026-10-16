@@ -1,11 +1,13 @@
-// CRT treatment (PLAN §5.5): chroma split, scanlines, bloom and vignette over
-// the finished scene. Fixed to the screen, so torn and rolled pictures move
-// under the scanlines rather than with them. With every amount at 0 this is
-// a straight copy.
+// CRT treatment (PLAN §5.5) and colour grade (§6): chroma split, scanlines,
+// bloom and vignette over the finished scene, then the grade, then the clean
+// part of the title. Fixed to the screen, so torn and rolled pictures move
+// under the scanlines rather than with them. With every amount at 0 and a
+// neutral grade this is a straight copy.
 
 @group(0) @binding(1) var scene_tex: texture_2d<f32>;
 @group(0) @binding(2) var bloom_tex: texture_2d<f32>;
 @group(0) @binding(3) var crt_smp: sampler;
+@group(0) @binding(4) var title_tex: texture_2d<f32>;
 
 // Red/blue offset at chroma = 1, as a fraction of the frame height.
 const CHROMA_MAX: f32 = 0.004;
@@ -27,6 +29,16 @@ fn bloom_at(uv: vec2<f32>) -> vec3<f32> {
         }
     }
     return sum / 16.0;
+}
+
+// Saturation, contrast, black level and tint, in perceptual space.
+fn grade(linear: vec3<f32>) -> vec3<f32> {
+    var c = to_perceptual(linear);
+    let luma = dot(c, vec3<f32>(0.2126, 0.7152, 0.0722));
+    c = mix(vec3<f32>(luma), c, globals.saturation);
+    c = (c - 0.5) * globals.contrast + 0.5;
+    c = globals.black_level + (1.0 - globals.black_level) * c;
+    return to_linear(c * globals.tint.rgb);
 }
 
 @fragment
@@ -56,6 +68,16 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     if (globals.vignette > 0.0) {
         let d = length((uv - 0.5) * vec2<f32>(aspect, 1.0)) / length(vec2<f32>(aspect, 1.0) * 0.5);
         c *= 1.0 - globals.vignette * smoothstep(0.35, 1.0, d);
+    }
+    if (globals.grade_on != 0u) {
+        c = grade(c);
+    }
+
+    // The undisturbed share of the title, drawn over everything.
+    let clean = 1.0 - globals.title_disturb;
+    if (globals.title_alpha > 0.0 && clean > 0.0) {
+        let a = textureSampleLevel(title_tex, crt_smp, uv, 0.0).r * title_reveal(uv) * clean;
+        c = mix(c, globals.title_colour.rgb, a);
     }
     return vec4<f32>(c, 1.0);
 }

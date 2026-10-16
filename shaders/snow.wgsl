@@ -13,10 +13,7 @@ fn snow_at(cell: vec2<u32>, frame: u32) -> f32 {
 }
 
 fn snow_value(uv: vec2<f32>) -> f32 {
-    let rows = globals.snow_rows;
-    let cols = round(rows * globals.resolution.x / globals.resolution.y);
-    // Wrap rather than clamp: torn and rolled positions leave the frame.
-    let cell = vec2<u32>(fract(uv) * vec2<f32>(cols, rows));
+    let cell = grid_cell(uv);
     var n = snow_at(cell, globals.frame);
     // Phosphor persistence: bright dots of the last two frames linger,
     // fading. Re-evaluated from their hashes rather than kept in a feedback
@@ -39,7 +36,8 @@ fn apply_snow(linear: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
         return linear; // exactly the photo at rest
     }
     let n = snow_value(uv);
-    var c = to_perceptual(linear) + (n - 0.5) * GRAIN * s;
+    // A softened photo gets coarser grain, to hide its missing detail.
+    var c = to_perceptual(linear) + (n - 0.5) * GRAIN * (1.0 + globals.soften) * s;
     c = mix(c, vec3<f32>(n), COVER_MAX * smoothstep(COVER_START, 1.0, s));
     return to_linear(c);
 }

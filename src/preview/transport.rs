@@ -1,25 +1,53 @@
 //! Play / pause / seek / loop over either the audio clock or, without audio,
-//! a wall clock.
+//! a wall clock. Past the end of the audio (the outro tail) the audio clock
+//! hands over to a wall clock until the video ends.
 
 use std::time::Instant;
 
 use super::audio::Player;
 use crate::analysis::Interleaved;
 
+/// Position = base + time since `started` (set while running).
+#[derive(Clone, Copy, Debug)]
+struct Wall {
+    base: f64,
+    started: Option<Instant>,
+}
+
+impl Wall {
+    fn new(base: f64, running: bool) -> Self {
+        Self { base, started: running.then(Instant::now) }
+    }
+
+    fn position(&self) -> f64 {
+        self.base + self.started.map_or(0.0, |s| s.elapsed().as_secs_f64())
+    }
+
+    fn run(&mut self, run: bool) {
+        *self = Self::new(self.position(), run);
+    }
+
+    fn seek(&mut self, secs: f64) {
+        *self = Self::new(secs, self.started.is_some());
+    }
+}
+
 enum Clock {
-    Audio(Player),
-    /// `started` is set while running; position = base + time since started.
-    Wall {
-        base: f64,
-        started: Option<Instant>,
+    Audio {
+        player: Player,
+        /// Length of the audio in seconds.
+        length: f64,
+        /// Set while the playhead is past the end of the audio.
+        past_end: Option<Wall>,
     },
+    Wall(Wall),
 }
 
 pub struct Transport {
     clock: Clock,
     duration: Option<f64>,
     /// What the user asked for. The audio clock can stop by itself when the
-    /// file runs out; `update` then loops or settles into paused.
+    /// file runs out; `update` then carries on, loops or settles into paused.
     playing: bool,
     pub looping: bool,
     pub loop_in: Option<f64>,
@@ -27,16 +55,16 @@ pub struct Transport {
 }
 
 impl Transport {
-    /// Falls back to a silent wall clock if there is no audio or no device.
-    pub fn new(audio: Option<Interleaved>, features_duration: Option<f64>) -> Self {
-        let duration = audio.as_ref().map(|a| a.duration()).or(features_duration);
-        let clock = match audio.map(Player::new) {
-            Some(Ok(player)) => Clock::Audio(player),
-            Some(Err(e)) => {
+    /// `duration` is the whole video (it may run past the audio). Falls back
+    /// to a silent wall clock if there is no audio or no device.
+    pub fn new(audio: Option<Interleaved>, duration: Option<f64>) -> Self {
+        let clock = match audio.map(|a| (a.duration(), Player::new(a))) {
+            Some((length, Ok(player))) => Clock::Audio { player, length, past_end: None },
+            Some((_, Err(e))) => {
                 eprintln!("warning: no audio playback ({e:#}); previewing silently");
-                Clock::Wall { base: 0.0, started: None }
+                Clock::Wall(Wall::new(0.0, false))
             }
-            None => Clock::Wall { base: 0.0, started: None },
+            None => Clock::Wall(Wall::new(0.0, false)),
         };
         let mut transport = Self { clock, duration, playing: false, looping: true, loop_in: None, loop_out: None };
         transport.set_playing(true);
@@ -44,17 +72,26 @@ impl Transport {
     }
 
     pub fn has_audio(&self) -> bool {
-        matches!(self.clock, Clock::Audio(_))
+        matches!(self.clock, Clock::Audio { .. })
     }
 
     pub fn duration(&self) -> Option<f64> {
         self.duration
     }
 
+    pub fn set_duration(&mut self, duration: Option<f64>) {
+        self.duration = duration;
+        if let Some(d) = duration
+            && self.position() > d
+        {
+            self.seek(d);
+        }
+    }
+
     pub fn position(&self) -> f64 {
         match &self.clock {
-            Clock::Audio(p) => p.position(),
-            Clock::Wall { base, started } => base + started.map_or(0.0, |s| s.elapsed().as_secs_f64()),
+            Clock::Audio { past_end: Some(wall), .. } | Clock::Wall(wall) => wall.position(),
+            Clock::Audio { player, .. } => player.position(),
         }
     }
 
@@ -77,14 +114,20 @@ impl Transport {
 
     pub fn seek(&mut self, secs: f64) {
         let secs = self.duration.map_or(secs, |d| secs.min(d)).max(0.0);
+        let playing = self.playing;
         match &mut self.clock {
-            Clock::Audio(p) => p.seek(secs),
-            Clock::Wall { base, started } => {
-                *base = secs;
-                if started.is_some() {
-                    *started = Some(Instant::now());
+            Clock::Audio { player, length, past_end } => {
+                if secs >= *length {
+                    player.seek(*length);
+                    player.set_playing(false);
+                    *past_end = Some(Wall::new(secs, playing));
+                } else {
+                    *past_end = None;
+                    player.seek(secs);
+                    player.set_playing(playing);
                 }
             }
+            Clock::Wall(wall) => wall.seek(secs),
         }
     }
 
@@ -96,17 +139,20 @@ impl Transport {
         (start, end)
     }
 
-    /// Call once per frame: wraps around the loop or stops at the end.
+    /// Call once per frame: continues past the audio, wraps around the loop
+    /// or stops at the end.
     pub fn update(&mut self) {
-        let (start, Some(end)) = self.loop_range() else { return };
         if !self.playing {
             return;
         }
-        let ran_out = match &self.clock {
-            Clock::Audio(p) => !p.playing(),
-            Clock::Wall { .. } => false,
-        };
-        if self.position() < end && !ran_out {
+        // The audio ran out but the video goes on: hand over to the wall clock.
+        if let Clock::Audio { player, length, past_end: past_end @ None } = &mut self.clock
+            && !player.playing()
+        {
+            *past_end = Some(Wall::new(*length, true));
+        }
+        let (start, Some(end)) = self.loop_range() else { return };
+        if self.position() < end {
             return;
         }
         if self.looping {
@@ -119,13 +165,9 @@ impl Transport {
     }
 
     fn run_clock(&mut self, run: bool) {
-        let position = self.position();
         match &mut self.clock {
-            Clock::Audio(p) => p.set_playing(run),
-            Clock::Wall { base, started } => {
-                *base = position;
-                *started = run.then(Instant::now);
-            }
+            Clock::Audio { past_end: Some(wall), .. } | Clock::Wall(wall) => wall.run(run),
+            Clock::Audio { player, .. } => player.set_playing(run),
         }
     }
 }

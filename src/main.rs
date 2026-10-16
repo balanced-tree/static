@@ -1,23 +1,25 @@
 mod analysis;
 mod assets;
 mod look;
+mod params;
 mod preview;
+mod project;
 mod renderer;
 mod show;
 mod tears;
+mod timeline;
 
 use std::path::PathBuf;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
-use clap::{Args, Parser, Subcommand};
+use clap::{Parser, Subcommand};
 
-use assets::{Fit, Framing};
-use look::{Look, StillnessMode};
-use renderer::{Crt, Gpu, RenderSettings, Renderer};
-use show::Show;
+use assets::AssetCache;
+use project::{Project, ProjectArgs};
+use renderer::{Gpu, RenderSettings, Renderer, Shaders};
 
-/// Output frame rate. Moves into `timeline.toml` with milestone 6.
+/// Output frame rate (`[meta] fps` must match).
 pub const FPS: f32 = 25.0;
 
 #[derive(Parser)]
@@ -29,10 +31,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Render a single frame headlessly to a PNG.
+    /// Render frames headlessly to PNGs.
     Frame {
         #[command(flatten)]
-        scene: SceneArgs,
+        project: ProjectArgs,
         /// Frame index to render (at 25 fps).
         #[arg(long, default_value_t = 0)]
         frame: u32,
@@ -49,7 +51,7 @@ enum Command {
     /// Open the live preview window.
     Preview {
         #[command(flatten)]
-        scene: SceneArgs,
+        project: ProjectArgs,
         /// Internal render resolution (the window scales it to fit).
         #[arg(long, default_value_t = 1920)]
         width: u32,
@@ -74,81 +76,6 @@ enum Command {
     Render,
 }
 
-/// What to show and how it reacts. Replaced by `timeline.toml` in milestone 6.
-#[derive(Args)]
-struct SceneArgs {
-    /// The WAV. Played back in the preview; analysed on the fly if no
-    /// `--features` file is given.
-    #[arg(long)]
-    audio: Option<PathBuf>,
-    /// Features file from `analyse`. Without it (and without `--audio`) the
-    /// photo stays at rest.
-    #[arg(long)]
-    features: Option<PathBuf>,
-    /// How signal energy maps to disturbance.
-    #[arg(long, value_enum, default_value_t = StillnessMode::StillAtRest)]
-    stillness: StillnessMode,
-    /// Seed for all noise; change it for a different (but repeatable) take.
-    #[arg(long, default_value_t = 1234)]
-    seed: u32,
-    /// Rows of the snow grid: lower = chunkier snow.
-    #[arg(long, default_value_t = 540.0)]
-    snow_rows: f32,
-    /// Photo to show. Omit to use a generated test card.
-    #[arg(long)]
-    photo: Option<PathBuf>,
-    /// `fill` crops to 16:9, `contain` letterboxes.
-    #[arg(long, value_enum, default_value_t = Fit::Fill)]
-    fit: Fit,
-    /// Crop centre as normalised `x,y` (used by `fill`).
-    #[arg(long, value_parser = parse_focus, default_value = "0.5,0.5")]
-    focus: [f32; 2],
-}
-
-impl SceneArgs {
-    fn settings(&self) -> RenderSettings {
-        RenderSettings { fps: FPS, seed: self.seed, snow_rows: self.snow_rows, crt: Crt::default() }
-    }
-
-    fn audio(&self) -> Result<Option<analysis::Interleaved>> {
-        self.audio.as_deref().map(analysis::read_wav).transpose()
-    }
-
-    fn show(&self, audio: Option<&analysis::Interleaved>) -> Result<Show> {
-        let features = match (&self.features, audio) {
-            (Some(path), _) => Some(analysis::Features::load(path)?),
-            (None, Some(audio)) => {
-                let started = Instant::now();
-                let params = analysis::AnalysisParams { fps: FPS, click_threshold: analysis::DEFAULT_CLICK_THRESHOLD };
-                let features = analysis::analyse_audio(&audio.to_mono(), &params);
-                eprintln!("analysed audio in {:.2?} ({} clicks)", started.elapsed(), features.clicks.len());
-                Some(features)
-            }
-            (None, None) => None,
-        };
-        if let (Some(f), Some(a)) = (&features, audio)
-            && (f.duration as f64 - a.duration()).abs() > 0.1
-        {
-            eprintln!(
-                "warning: features are {:.1} s long but the audio is {:.1} s — made from a different file?",
-                f.duration,
-                a.duration()
-            );
-        }
-        Ok(Show::new(features, Look::new(self.stillness)))
-    }
-
-    fn photo(&self, width: u32, height: u32) -> Result<image::RgbaImage> {
-        match &self.photo {
-            Some(path) => {
-                let framing = Framing { fit: self.fit, focus: self.focus };
-                assets::load_photo(path, width, height, &framing)
-            }
-            None => Ok(assets::test_card(width, height)),
-        }
-    }
-}
-
 /// `out/frame.png` → `out/frame_000700.png`
 fn numbered(path: &std::path::Path, index: u32) -> PathBuf {
     let stem = path.file_stem().map_or("frame".into(), |s| s.to_string_lossy().into_owned());
@@ -156,22 +83,15 @@ fn numbered(path: &std::path::Path, index: u32) -> PathBuf {
     path.with_file_name(format!("{stem}_{index:06}.{ext}"))
 }
 
-fn parse_focus(s: &str) -> Result<[f32; 2], String> {
-    let parts: Vec<f32> =
-        s.split(',').map(|p| p.trim().parse::<f32>().map_err(|e| e.to_string())).collect::<Result<_, _>>()?;
-    match parts[..] {
-        [x, y] if (0.0..=1.0).contains(&x) && (0.0..=1.0).contains(&y) => Ok([x, y]),
-        _ => Err("expected `x,y` with both values in 0..1".into()),
-    }
-}
-
 fn main() -> Result<()> {
     match Cli::parse().command {
-        Command::Frame { scene, frame, count, out, width, height } => {
+        Command::Frame { project, frame, count, out, width, height } => {
             let started = Instant::now();
-            let show = scene.show(scene.audio()?.as_ref())?;
+            let (project, show) = Project::load(&project)?;
+            let assets = AssetCache::new(width, height).assets(show.timeline());
             let gpu = Gpu::new(Gpu::instance(), None)?;
-            let renderer = Renderer::new(&gpu, &scene.photo(width, height)?, scene.settings());
+            let settings = RenderSettings { fps: FPS, seed: project.seed };
+            let renderer = Renderer::new(&gpu, &assets, settings, &Shaders::embedded())?;
             if let Some(dir) = out.parent() {
                 std::fs::create_dir_all(dir)?;
             }
@@ -182,7 +102,7 @@ fn main() -> Result<()> {
                 renderer.read_frame(&gpu)?.save(&path).with_context(|| format!("writing {}", path.display()))?;
                 let (f, d) = (show.features_at(index), inputs.disturbance);
                 println!(
-                    "frame {index} ({:.2} s): hiss {:.2} click {:.2} loud {:.2} → snow {:.2} jitter {:.2} tear {:.2}{}  {}",
+                    "frame {index} ({:.2} s): hiss {:.2} click {:.2} loud {:.2} → snow {:.2} jitter {:.2} tear {:.2}{}{}  {}",
                     index as f32 / FPS,
                     f.hiss,
                     f.click,
@@ -191,19 +111,19 @@ fn main() -> Result<()> {
                     d.jitter,
                     d.tear,
                     if inputs.tears.roll > 0.0 { " (roll)" } else { "" },
+                    if inputs.title.alpha > 0.0 { " (title)" } else { "" },
                     path.display()
                 );
             }
             if show.len().is_some_and(|len| frame + count > len) {
-                eprintln!("note: frames past the end of the audio render as silence");
+                eprintln!("note: frames past the end of the video render as silence");
             }
             println!("{count} frame(s) at {width}×{height} in {:.2?}", started.elapsed());
             Ok(())
         }
-        Command::Preview { scene, width, height } => {
-            let audio = scene.audio()?;
-            let show = scene.show(audio.as_ref())?;
-            preview::run(scene.photo(width, height)?, show, scene.settings(), audio)
+        Command::Preview { project, width, height } => {
+            let (project, show) = Project::load(&project)?;
+            preview::run(project, show, (width, height))
         }
         Command::Analyse { wav, out, click_threshold, no_plot } => {
             let started = Instant::now();

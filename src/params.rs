@@ -5,7 +5,6 @@
 //! In `timeline.toml` a parameter is written as `group = { key = value }`,
 //! e.g. `hiss = { gain = 1.4, release = "800ms" }`.
 
-use crate::analysis::Envelope;
 use crate::look::{Look, Stillness, Weights};
 use crate::renderer::{Crt, Grade};
 
@@ -36,7 +35,9 @@ const fn spec(group: &'static str, key: &'static str, default: f32, min: f32, ma
 
 use Kind::*;
 
-/// Indices into `SPECS`; keep in the same order.
+/// Indices into `SPECS`; keep in the same order. Not every variant is named
+/// in code: some are only reached through the table.
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(usize)]
 pub enum P {
@@ -177,14 +178,6 @@ impl Params {
                 invert: self[P::Invert] > 0.5,
             },
         }
-    }
-
-    pub fn hiss_envelope(&self) -> Envelope {
-        Envelope { attack: self[P::HissAttack], release: self[P::HissRelease] }
-    }
-
-    pub fn loud_envelope(&self) -> Envelope {
-        Envelope { attack: self[P::LoudAttack], release: self[P::LoudRelease] }
     }
 
     pub fn crt(&self) -> Crt {
