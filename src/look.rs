@@ -52,8 +52,15 @@ impl Stillness {
     }
 
     fn map(&self, amount: f32) -> f32 {
-        let v = self.baseline + (1.0 - self.baseline) * amount.clamp(0.0, 1.0).powf(self.response);
+        let v = self.baseline + (1.0 - self.baseline) * self.shape(amount);
         if self.invert { 1.0 - v } else { v }
+    }
+
+    /// Just the response curve. Tears and chroma split are events, not a
+    /// resting state, so they skip `baseline` and `invert`: otherwise an
+    /// inverted look would tear constantly through silence.
+    fn shape(&self, amount: f32) -> f32 {
+        amount.clamp(0.0, 1.0).powf(self.response)
     }
 }
 
@@ -63,6 +70,8 @@ pub struct Look {
     pub preset: StillnessMode,
     pub snow: Weights,
     pub jitter: Weights,
+    pub tear: Weights,
+    pub chroma: Weights,
     pub stillness: Stillness,
 }
 
@@ -72,12 +81,20 @@ impl Look {
             preset: mode,
             snow: Weights { hiss: 0.6, click: 0.1, loud: 0.5 },
             jitter: Weights { hiss: 0.4, click: 0.2, loud: 0.6 },
+            tear: Weights { hiss: 0.0, click: 0.8, loud: 0.4 },
+            chroma: Weights { hiss: 0.0, click: 0.6, loud: 0.3 },
             stillness: Stillness::preset(mode),
         }
     }
 
     pub fn disturbance(&self, f: &FeatureFrame) -> Disturbance {
-        Disturbance { snow: self.stillness.map(self.snow.mix(f)), jitter: self.stillness.map(self.jitter.mix(f)) }
+        let s = &self.stillness;
+        Disturbance {
+            snow: s.map(self.snow.mix(f)),
+            jitter: s.map(self.jitter.mix(f)),
+            tear: s.shape(self.tear.mix(f)),
+            chroma: s.shape(self.chroma.mix(f)),
+        }
     }
 }
 
@@ -86,6 +103,8 @@ impl Look {
 pub struct Disturbance {
     pub snow: f32,
     pub jitter: f32,
+    pub tear: f32,
+    pub chroma: f32,
 }
 
 #[cfg(test)]
@@ -98,8 +117,10 @@ mod tests {
     #[test]
     fn still_at_rest_is_clean_in_silence() {
         let look = Look::new(StillnessMode::StillAtRest);
-        assert_eq!(look.disturbance(&SILENT), Disturbance { snow: 0.0, jitter: 0.0 });
-        assert_eq!(look.disturbance(&LOUD), Disturbance { snow: 1.0, jitter: 1.0 });
+        assert_eq!(look.disturbance(&SILENT), Disturbance::default());
+        let d = look.disturbance(&LOUD);
+        assert_eq!((d.snow, d.jitter, d.tear), (1.0, 1.0, 1.0));
+        assert_eq!(d.chroma, 0.9f32.powf(1.3), "mix 0.9 through the response curve");
     }
 
     #[test]
@@ -113,5 +134,6 @@ mod tests {
         let look = Look::new(StillnessMode::Inverted);
         assert_eq!(look.disturbance(&SILENT).snow, 1.0);
         assert_eq!(look.disturbance(&LOUD).snow, 0.0);
+        assert_eq!(look.disturbance(&SILENT).tear, 0.0, "silence never tears");
     }
 }

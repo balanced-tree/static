@@ -4,6 +4,7 @@
 use crate::analysis::{FeatureFrame, Features, SmoothingParams};
 use crate::look::Look;
 use crate::renderer::FrameInputs;
+use crate::tears::{self, Tears};
 
 pub struct Show {
     features: Option<Features>,
@@ -50,6 +51,10 @@ impl Show {
     }
 
     pub fn inputs(&self, index: u32) -> FrameInputs {
-        FrameInputs { index, disturbance: self.look.disturbance(&self.features_at(index)) }
+        let tears = self
+            .features
+            .as_ref()
+            .map_or_else(Tears::default, |f| tears::at(&f.clicks, index, f.fps, self.smoothing.click_decay));
+        FrameInputs { index, disturbance: self.look.disturbance(&self.features_at(index)), tears }
     }
 }

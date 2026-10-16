@@ -4,6 +4,7 @@ mod look;
 mod preview;
 mod renderer;
 mod show;
+mod tears;
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -13,7 +14,7 @@ use clap::{Args, Parser, Subcommand};
 
 use assets::{Fit, Framing};
 use look::{Look, StillnessMode};
-use renderer::{Gpu, RenderSettings, Renderer};
+use renderer::{Crt, Gpu, RenderSettings, Renderer};
 use show::Show;
 
 /// Output frame rate. Moves into `timeline.toml` with milestone 6.
@@ -106,7 +107,7 @@ struct SceneArgs {
 
 impl SceneArgs {
     fn settings(&self) -> RenderSettings {
-        RenderSettings { fps: FPS, seed: self.seed, snow_rows: self.snow_rows }
+        RenderSettings { fps: FPS, seed: self.seed, snow_rows: self.snow_rows, crt: Crt::default() }
     }
 
     fn audio(&self) -> Result<Option<analysis::Interleaved>> {
@@ -182,13 +183,15 @@ fn main() -> Result<()> {
                 renderer.read_frame(&gpu)?.save(&path).with_context(|| format!("writing {}", path.display()))?;
                 let (f, d) = (show.features_at(index), inputs.disturbance);
                 println!(
-                    "frame {index} ({:.2} s): hiss {:.2} click {:.2} loud {:.2} → snow {:.2} jitter {:.2}  {}",
+                    "frame {index} ({:.2} s): hiss {:.2} click {:.2} loud {:.2} → snow {:.2} jitter {:.2} tear {:.2}{}  {}",
                     index as f32 / FPS,
                     f.hiss,
                     f.click,
                     f.loud,
                     d.snow,
                     d.jitter,
+                    d.tear,
+                    if inputs.tears.roll > 0.0 { " (roll)" } else { "" },
                     path.display()
                 );
             }
