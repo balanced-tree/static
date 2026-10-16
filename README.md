@@ -16,6 +16,13 @@ See [PLAN.md](PLAN.md) for the full design and milestones.
 cargo run -- frame
 cargo run -- frame --photo photos/di_box.jpg --focus 0.5,0.4 -o out/di_box.png
 
+# Analyse a WAV → out/<name>.features.bin + out/<name>.features.svg (open in a browser)
+cargo run -- analyse audio/still_charged.wav
+cargo run -- analyse audio/still_charged.wav --click-threshold 3   # more clicks
+
+# Print the smoothed feature values at a frame
+cargo run -- frame --features out/still_charged.features.bin --frame 1500
+
 # Live preview window (Esc to close)
 cargo run -- preview --photo photos/light_switch.jpg
 ```
@@ -28,8 +35,14 @@ Options shared by `frame` and `preview`:
 | `--fit fill\|contain` | `fill` crops to 16:9, `contain` letterboxes on black. |
 | `--focus x,y` | Crop centre for `fill`, normalised 0..1. |
 
-`frame` also takes `--frame N`, `-o/--out`, `--width` and `--height` (default 3840×2160).
+`frame` also takes `--frame N`, `-o/--out`, `--width`, `--height` (default 3840×2160) and `--features <file>`.
 `preview` renders internally at `--width`/`--height` (default 1920×1080) and scales the result to the window.
+
+## Testing
+
+```sh
+cargo test
+```
 
 ## Folders
 
