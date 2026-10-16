@@ -119,6 +119,9 @@ fn raw_input_args(width: u32, height: u32) -> Vec<String> {
 
 const COLOUR_ARGS: [&str; 8] =
     ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"];
+/// `setparams` stamps the frames themselves: recent ffmpeg takes the
+/// encoder's colour tags from the frames, and raw RGB input carries none.
+const TAG_BT709: &str = "setparams=color_primaries=bt709:color_trc=bt709:colorspace=bt709:range=tv";
 const TO_YUV: &str = "scale=out_color_matrix=bt709:out_range=tv,format=yuv420p";
 
 impl Options {
@@ -129,8 +132,9 @@ impl Options {
             Codec::H264 => ("libx264", 14, &[]),
         };
         let crf = self.crf.unwrap_or(default_crf).to_string();
+        let filter = format!("{TO_YUV},{TAG_BT709}");
         let mut args: Vec<String> =
-            ["-vf", TO_YUV, "-c:v", encoder, "-preset", &self.preset, "-crf", &crf].map(String::from).into();
+            ["-vf", &filter, "-c:v", encoder, "-preset", &self.preset, "-crf", &crf].map(String::from).into();
         // YouTube's recommendation: closed GOP of half the frame rate, 2 B-frames.
         args.extend(["-g", "12", "-bf", "2"].map(String::from));
         args.extend(extra.iter().map(|s| s.to_string()));
@@ -413,7 +417,8 @@ pub fn preview_youtube(project: &Project, show: &Show, opts: &Options) -> Result
         args.push(audio.to_string_lossy().into_owned());
     }
     for (path, height, rate) in [(&hd, 1080, "8M"), (&uhd, 2160, "25M")] {
-        let filter = format!("scale=-2:{height}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p");
+        let filter =
+            format!("scale=-2:{height}:flags=lanczos:out_color_matrix=bt709:out_range=tv,format=yuv420p,{TAG_BT709}");
         args.extend(["-map".into(), "0:v".into(), "-vf".into(), filter]);
         args.extend(
             ["-c:v", "libx264", "-preset", "medium", "-b:v", rate, "-maxrate", rate, "-bufsize", rate]
