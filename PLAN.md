@@ -294,7 +294,9 @@ end_on = "black"
 - Headless `wgpu`, 3840×2160 @ 25 fps.
 - Each frame is read back as RGBA and piped to `ffmpeg` stdin, which muxes the original audio.
 - `--from` / `--to` frame ranges for test renders and **resumable chunked renders** (15 min @ 25 fps = 22,500 4K frames). Chunks use identical encoder settings, so ffmpeg's concat demuxer can join them without re-encoding.
-- Optional supersampling/AA flag for the final pass.
+- Optional supersampling/AA flag for the final pass. *(Not built: the snow and scanlines sit on a coarse grid, so it would mainly smooth title edges. Revisit if they look jagged at 4K.)*
+- As built: chunks (default 60 s) sit on absolute frame boundaries and are renamed into place only once complete. A fingerprint (timeline, photos, audio, font, shaders, size and encoder settings) discards stale chunks. `--from`/`--to` take frames or times. Frames are converted RGB→YUV with the BT.709 matrix *and* stamped BT.709 (`setparams`); without the stamp, recent ffmpeg leaves primaries and transfer untagged. A test showed decoded frames matching the PNG render to within 0.5 levels of mean shift per channel. Measured speed: about 10 fps at 4K with x264 `slow` on this Mac (≈40 min for 15 min of video), ~110 Mbit/s on noise-heavy material.
+- GOP follows YouTube's recommendation: closed, 12 frames, 2 B-frames.
 
 ### Output format: YouTube
 
@@ -348,7 +350,7 @@ Static/
 4. ✅ **Preview app:** audio playback, scrubbing, egui sliders.
 5. ✅ **Tears + CRT:** click-driven displacement, scanlines, persistence.
 6. ✅ **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
-7. **Export:** ffmpeg pipe, YouTube-ready MP4, chunked/resumable renders, YouTube-bitrate excerpt check.
+7. ✅ **Export:** ffmpeg pipe, YouTube-ready MP4, chunked/resumable renders, YouTube-bitrate excerpt check.
 8. **Exploration pass:** compare stillness modes and colour presets against the actual piece, then lock the timeline.
 9. **Final 4K render.**
 
