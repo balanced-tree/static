@@ -1,5 +1,6 @@
 mod analysis;
 mod assets;
+mod export;
 mod look;
 mod params;
 mod preview;
@@ -72,8 +73,46 @@ enum Command {
         #[arg(long)]
         no_plot: bool,
     },
-    /// Render the full video (milestone 7).
-    Render,
+    /// Render the video: frames piped to ffmpeg in resumable chunks, joined
+    /// and muxed with the audio into an upload-ready MP4.
+    Render {
+        #[command(flatten)]
+        project: ProjectArgs,
+        /// Output file (.mp4, or .mov with --audio-copy).
+        #[arg(short, long, default_value = "out/still_charged.mp4")]
+        out: PathBuf,
+        #[arg(long, default_value_t = 3840)]
+        width: u32,
+        #[arg(long, default_value_t = 2160)]
+        height: u32,
+        /// Start here: a frame number or a time ("1:30", "90s"). Default: 0.
+        #[arg(long, value_parser = export::parse_position)]
+        from: Option<u32>,
+        /// Stop before here (frame or time). Default: the end of the video.
+        #[arg(long, value_parser = export::parse_position)]
+        to: Option<u32>,
+        /// Length of each resumable chunk.
+        #[arg(long, default_value = "60s", value_parser = export::parse_position)]
+        chunk: u32,
+        #[arg(long, value_enum, default_value_t = export::Codec::H264)]
+        codec: export::Codec,
+        /// Quality (lower = better and bigger). Default 14 for H.264, 16 for H.265.
+        #[arg(long)]
+        crf: Option<u8>,
+        /// Encoder speed/efficiency preset.
+        #[arg(long, default_value = "slow")]
+        preset: String,
+        /// Lossless 24-bit PCM audio instead of AAC (needs a .mov output).
+        #[arg(long)]
+        audio_copy: bool,
+        /// Keep the chunk files after joining them.
+        #[arg(long)]
+        keep_chunks: bool,
+        /// Instead of the full render: encode an excerpt (--from, 20 s by
+        /// default) at YouTube-like bitrates to check how the snow survives.
+        #[arg(long)]
+        preview_youtube: bool,
+    },
 }
 
 /// `out/frame.png` → `out/frame_000700.png`
@@ -151,6 +190,40 @@ fn main() -> Result<()> {
             }
             Ok(())
         }
-        Command::Render => bail!("`render` is not implemented yet (milestone 7)"),
+        Command::Render {
+            project,
+            out,
+            width,
+            height,
+            from,
+            to,
+            chunk,
+            codec,
+            crf,
+            preset,
+            audio_copy,
+            keep_chunks,
+            preview_youtube,
+        } => {
+            let (project, show) = Project::load(&project)?;
+            let opts = export::Options {
+                out,
+                width,
+                height,
+                from,
+                to,
+                chunk_frames: chunk,
+                codec,
+                crf,
+                preset,
+                audio_copy,
+                keep_chunks,
+            };
+            if preview_youtube {
+                export::preview_youtube(&project, &show, &opts)
+            } else {
+                export::render(&project, &show, &opts)
+            }
+        }
     }
 }

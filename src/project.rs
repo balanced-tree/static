@@ -126,8 +126,7 @@ impl Project {
         let audio_secs = audio.as_ref().map(|a| a.duration()).or(features.as_ref().map(|f| f.duration as f64));
 
         let audio_path = args.audio.clone().or(file.audio.clone());
-        let project =
-            Self { timeline_path, audio, audio_path, seed: file.seed, seed_override: args.seed, audio_secs };
+        let project = Self { timeline_path, audio, audio_path, seed: file.seed, seed_override: args.seed, audio_secs };
         let show = Show::new(Timeline::compile(&file, audio_secs), features, FPS);
         Ok((project, show))
     }

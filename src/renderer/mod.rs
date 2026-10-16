@@ -37,7 +37,7 @@ const BLOOM_FILES: &[&str] = &["fullscreen.wgsl", "bloom.wgsl"];
 const CRT_FILES: &[&str] = &["fullscreen.wgsl", "common.wgsl", "crt.wgsl"];
 
 /// The shader sources: compiled in, or read from disk for hot reload.
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Shaders {
     scene: String,
     bloom: String,
