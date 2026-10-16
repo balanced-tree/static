@@ -31,6 +31,8 @@ cargo run -- preview --photo photos/light_switch.jpg --audio audio/still_charged
 cargo run -- preview --audio audio/still_charged.wav --features out/still_charged.features.bin
 ```
 
+Frames get the CRT treatment (scanlines, bloom, vignette) by default; the preview's **CRT** section tunes it or turns it off. Clicks tear the picture: a band per click, macroblocks on strong ones and a vertical roll on the strongest.
+
 Preview keys: Space play/pause · ←/→ 5 s (⇧ one frame) · Home loop start · L loop · I/O loop in/out · H hide panels · M feature meters · Esc quit. Click or drag the strip under the transport to seek. **Copy as TOML** copies the current slider values (and prints them to the terminal) in the shape `timeline.toml` cues will use.
 
 Options shared by `frame` and `preview`:
