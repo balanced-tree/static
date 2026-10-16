@@ -123,7 +123,8 @@ Composited from back to front:
 3. **Jitter:** continuous sub-pixel to few-pixel position noise on the image, scaled by `hiss` and `loud`. This is the "noise reacting to the music" layer.
 4. **Snow / grain:** hashed per-frame noise. `hiss` and `loud` control density, contrast and the mix with the photo. Rendered at a configurable *virtual resolution* (e.g. 960×540, upscaled nearest-neighbour) so it reads as TV snow rather than invisible 4K-pixel noise.
    - **Title layer** (opening only, see §7): composited onto the base scene *before* displacement, jitter and snow, so it tears and dissolves with the signal like the photos do. Its `disturb` setting controls how much (0 = clean overlay drawn after the CRT pass).
-5. **CRT treatment:** scanlines, slight bloom, vignette, optional phosphor persistence (feedback buffer) so static leaves short trails.
+5. **CRT treatment:** scanlines (one per snow row; bright lines spread like a real beam), slight bloom (via an 8× downsampled pass), vignette, chroma split, optional phosphor persistence so static leaves short trails.
+   - Persistence is **not** a feedback buffer: that would make each frame depend on the frames rendered before it, breaking the determinism rule and `--from` chunked renders. Snow is a pure hash of the frame, so the shader re-evaluates the previous two frames' snow and keeps the brighter, decayed value. Only the snow persists, not the photo.
 6. **Colour grade:** tunable (see §6).
 
 ### Disturbance mix
@@ -137,7 +138,7 @@ Each disturbance layer takes a weighted sum of the features. The weights are key
 | Tear strength | 0.0 | 0.8 | 0.4 |
 | Chroma split | 0.0 | 0.6 | 0.3 |
 
-Each sum then goes through the stillness mapping below. This all runs on the CPU per frame (`src/look.rs`); the shaders only receive the final `snow` and `jitter` amounts.
+Snow and jitter then go through the stillness mapping below. Tears and chroma split only go through its `response` curve and skip `baseline`/`invert`, because they are events rather than a resting state: an inverted look would otherwise tear constantly through silence. This all runs on the CPU per frame (`src/look.rs`, with the click events in `src/tears.rs`); the shaders only receive the final amounts.
 
 Snow is grain over the photo at low amounts and takes over from ~0.45 upwards, but stops at ~88 % coverage. Like a weak TV signal, a ghost of the object stays visible even at full disturbance. Pure static is reserved for `scene = "static"`.
 
@@ -335,7 +336,7 @@ Static/
 2. ✅ **Analysis:** decode, STFT, hiss + click + loudness (+ optional hum) features → `features.bin`, plus an SVG debug plot.
 3. ✅ **Snow + jitter:** first audio-reactive shader layers on one photo, plus the disturbance mix and stillness modes.
 4. ✅ **Preview app:** audio playback, scrubbing, egui sliders.
-5. **Tears + CRT:** click-driven displacement, scanlines, persistence.
+5. ✅ **Tears + CRT:** click-driven displacement, scanlines, persistence.
 6. **Timeline:** cues, `[intro]`/`[outro]`, `[title]` (text rasterisation + reveal/vanish), static/black scenes, crossfades, `noise_dissolve`, keyframed params, hot reload.
 7. **Export:** ffmpeg pipe, YouTube-ready MP4, chunked/resumable renders, YouTube-bitrate excerpt check.
 8. **Exploration pass:** compare stillness modes and colour presets against the actual piece, then lock the timeline.
