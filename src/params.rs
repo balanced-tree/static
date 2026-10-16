@@ -47,15 +47,19 @@ pub enum P {
     SnowHiss,
     SnowClick,
     SnowLoud,
+    SnowThreshold,
     JitterHiss,
     JitterClick,
     JitterLoud,
+    JitterThreshold,
     TearHiss,
     TearClick,
     TearLoud,
+    TearThreshold,
     ChromaHiss,
     ChromaClick,
     ChromaLoud,
+    ChromaThreshold,
     HissAttack,
     HissRelease,
     HissGain,
@@ -89,15 +93,19 @@ pub const SPECS: [Spec; COUNT] = [
     spec("snow_mix", "hiss", 0.6, 0.0, 1.5, Number),
     spec("snow_mix", "click", 0.1, 0.0, 1.5, Number),
     spec("snow_mix", "loud", 0.5, 0.0, 1.5, Number),
+    spec("snow_mix", "threshold", 0.0, 0.0, 0.9, Number),
     spec("jitter_mix", "hiss", 0.4, 0.0, 1.5, Number),
     spec("jitter_mix", "click", 0.2, 0.0, 1.5, Number),
     spec("jitter_mix", "loud", 0.6, 0.0, 1.5, Number),
+    spec("jitter_mix", "threshold", 0.0, 0.0, 0.9, Number),
     spec("tear_mix", "hiss", 0.0, 0.0, 1.5, Number),
     spec("tear_mix", "click", 0.8, 0.0, 1.5, Number),
     spec("tear_mix", "loud", 0.4, 0.0, 1.5, Number),
+    spec("tear_mix", "threshold", 0.0, 0.0, 0.9, Number),
     spec("chroma_mix", "hiss", 0.0, 0.0, 1.5, Number),
     spec("chroma_mix", "click", 0.6, 0.0, 1.5, Number),
     spec("chroma_mix", "loud", 0.3, 0.0, 1.5, Number),
+    spec("chroma_mix", "threshold", 0.0, 0.0, 0.9, Number),
     spec("hiss", "attack", 0.15, 0.0, 2.0, Duration),
     spec("hiss", "release", 0.6, 0.0, 4.0, Duration),
     spec("hiss", "gain", 1.0, 0.0, 3.0, Number),
@@ -163,7 +171,7 @@ impl std::ops::IndexMut<P> for Params {
 impl Params {
     fn weights(&self, first: P) -> Weights {
         let i = first as usize;
-        Weights { hiss: self.0[i], click: self.0[i + 1], loud: self.0[i + 2] }
+        Weights { hiss: self.0[i], click: self.0[i + 1], loud: self.0[i + 2], threshold: self.0[i + 3] }
     }
 
     pub fn look(&self) -> Look {
@@ -219,6 +227,8 @@ mod tests {
         assert_eq!(SPECS[P::ClickGain as usize].group, "clicks");
         assert_eq!(SPECS[P::SnowRows as usize].group, "snow");
         assert_eq!(SPECS[P::TintB as usize].key, "tint.b");
+        assert_eq!(SPECS[P::JitterThreshold as usize].group, "jitter_mix");
+        assert_eq!(SPECS[P::ChromaThreshold as usize].key, "threshold");
         for g in GROUPS {
             assert!(group(g).next().is_some(), "empty group {g}");
         }

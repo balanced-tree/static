@@ -12,11 +12,17 @@ pub struct Weights {
     pub hiss: f32,
     pub click: f32,
     pub loud: f32,
+    /// Mixes below this give nothing; above it the rest of the range is
+    /// stretched back to 0..1, so soft passages stay still without taming
+    /// the loud ones.
+    pub threshold: f32,
 }
 
 impl Weights {
     fn mix(&self, f: &FeatureFrame) -> f32 {
-        (self.hiss * f.hiss + self.click * f.click + self.loud * f.loud).clamp(0.0, 1.0)
+        let m = (self.hiss * f.hiss + self.click * f.click + self.loud * f.loud).clamp(0.0, 1.0);
+        let t = self.threshold.clamp(0.0, 0.99);
+        ((m - t) / (1.0 - t)).max(0.0)
     }
 }
 
@@ -124,6 +130,15 @@ mod tests {
         let d = look.disturbance(&LOUD);
         assert_eq!((d.snow, d.jitter, d.tear), (1.0, 1.0, 1.0));
         assert!((d.chroma - 0.9f32.powf(1.3)).abs() < 1e-6, "mix 0.9 through the response curve: {}", d.chroma);
+    }
+
+    #[test]
+    fn threshold_ignores_soft_signal_and_keeps_the_top() {
+        let w = Weights { hiss: 0.0, click: 0.0, loud: 1.0, threshold: 0.4 };
+        let at = |loud| w.mix(&FeatureFrame { loud, ..SILENT });
+        assert_eq!(at(0.3), 0.0);
+        assert!((at(0.7) - 0.5).abs() < 1e-6);
+        assert_eq!(at(1.0), 1.0);
     }
 
     #[test]
