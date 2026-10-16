@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 
 use anyhow::{Context, Result, bail};
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{FromSample, Sample as _, SampleFormat, SizedSample};
+use cpal::{FromSample, SampleFormat, SizedSample};
 
 use crate::analysis::Interleaved;
 
@@ -104,7 +104,7 @@ fn build<T: SizedSample + FromSample<f32>>(
     let out_channels = config.channels as usize;
     let last = (source.samples.len() / source.channels).saturating_sub(1) as f64;
     let stream = device.build_output_stream::<T, _, _>(
-        config.clone(),
+        *config,
         move |out: &mut [T], _| {
             let seek = shared.seek.swap(NO_SEEK, Ordering::AcqRel);
             let mut pos = f64::from_bits(if seek != NO_SEEK { seek } else { shared.position.load(Ordering::Acquire) });
