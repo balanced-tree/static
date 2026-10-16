@@ -51,6 +51,9 @@ pub struct Project {
     /// `None` when running from flags.
     pub timeline_path: Option<PathBuf>,
     pub audio: Option<Interleaved>,
+    /// The WAV as configured (flag or `[meta] audio`), whether or not it
+    /// exists; the export muxes this file.
+    pub audio_path: Option<PathBuf>,
     pub seed: u32,
     seed_override: Option<u32>,
     /// Length of the audio (or features), which the timeline is placed against.
@@ -122,7 +125,9 @@ impl Project {
         }
         let audio_secs = audio.as_ref().map(|a| a.duration()).or(features.as_ref().map(|f| f.duration as f64));
 
-        let project = Self { timeline_path, audio, seed: file.seed, seed_override: args.seed, audio_secs };
+        let audio_path = args.audio.clone().or(file.audio.clone());
+        let project =
+            Self { timeline_path, audio, audio_path, seed: file.seed, seed_override: args.seed, audio_secs };
         let show = Show::new(Timeline::compile(&file, audio_secs), features, FPS);
         Ok((project, show))
     }
