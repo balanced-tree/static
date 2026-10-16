@@ -9,6 +9,7 @@ use super::Session;
 use crate::FPS;
 use crate::analysis::Envelope;
 use crate::look::{Stillness, StillnessMode, Weights};
+use crate::renderer::Crt;
 
 /// UI-only state.
 pub struct UiState {
@@ -166,11 +167,17 @@ fn scrub_strip(ui: &mut egui::Ui, s: &mut Session) {
             let x = rect.left() + c as f32 + 0.5;
             let y = |v: f32| lane_bottom - v * (lane_bottom - lane_top);
             painter.line_segment([Pos2::new(x, lane_bottom), Pos2::new(x, y(loud))], (1.0, Color32::from_gray(70)));
-            painter.line_segment([Pos2::new(x, lane_bottom), Pos2::new(x, y(hiss * loud))], (1.0, HISS.gamma_multiply(0.5)));
+            painter.line_segment(
+                [Pos2::new(x, lane_bottom), Pos2::new(x, y(hiss * loud))],
+                (1.0, HISS.gamma_multiply(0.5)),
+            );
         }
         for click in &f.clicks {
             let x = x_of(click.time as f64);
-            painter.line_segment([Pos2::new(x, rect.top() + 2.0), Pos2::new(x, rect.top() + 2.0 + 10.0 * click.strength)], (1.0, ACCENT));
+            painter.line_segment(
+                [Pos2::new(x, rect.top() + 2.0), Pos2::new(x, rect.top() + 2.0 + 10.0 * click.strength)],
+                (1.0, ACCENT),
+            );
         }
     }
 
@@ -206,6 +213,12 @@ fn controls(ui: &mut egui::Ui, s: &mut Session) {
     ui.add_space(8.0);
     ui.heading("Jitter mix");
     weights(ui, &mut look.jitter);
+    ui.add_space(8.0);
+    ui.heading("Tear mix");
+    weights(ui, &mut look.tear);
+    ui.add_space(8.0);
+    ui.heading("Chroma split mix");
+    weights(ui, &mut look.chroma);
 
     ui.add_space(8.0);
     ui.heading("Smoothing");
@@ -225,6 +238,22 @@ fn controls(ui: &mut egui::Ui, s: &mut Session) {
         ui.add(egui::DragValue::new(&mut s.settings.seed));
     });
 
+    ui.add_space(8.0);
+    ui.horizontal(|ui| {
+        ui.heading("CRT");
+        if ui.small_button("off").clicked() {
+            s.settings.crt = Crt::OFF;
+        }
+        if ui.small_button("default").clicked() {
+            s.settings.crt = Crt::default();
+        }
+    });
+    let crt = &mut s.settings.crt;
+    ui.add(Slider::new(&mut crt.scanlines, 0.0..=1.0).text("scanlines"));
+    ui.add(Slider::new(&mut crt.vignette, 0.0..=1.0).text("vignette"));
+    ui.add(Slider::new(&mut crt.bloom, 0.0..=1.0).text("bloom"));
+    ui.add(Slider::new(&mut crt.persistence, 0.0..=0.95).text("persistence"));
+
     ui.add_space(12.0);
     ui.horizontal(|ui| {
         if ui.button("Copy as TOML").on_hover_text("Copies these settings (also printed to the terminal)").clicked() {
@@ -239,6 +268,7 @@ fn controls(ui: &mut egui::Ui, s: &mut Session) {
         if ui.button("Reset").clicked() {
             s.show.look = crate::look::Look::new(s.ui.preset);
             s.show.set_smoothing(Default::default());
+            s.settings.crt = Crt::default();
         }
     });
 
@@ -263,13 +293,17 @@ fn meters(ui: &mut egui::Ui, s: &Session) {
     let frame = fit(s.ui.view_rect, s.ui.frame_aspect);
     let index = s.frame_index();
     let f = s.show.features_at(index);
-    let d = s.show.inputs(index).disturbance;
+    let inputs = s.show.inputs(index);
+    let d = inputs.disturbance;
     let rows = [
         ("hiss", f.hiss, HISS),
         ("click", f.click, ACCENT),
         ("loud", f.loud, Color32::from_gray(220)),
         ("→ snow", d.snow, Color32::WHITE),
         ("→ jitter", d.jitter, Color32::WHITE),
+        ("→ tear", d.tear, Color32::WHITE),
+        ("→ chroma", d.chroma, Color32::WHITE),
+        ("roll", inputs.tears.roll / crate::tears::ROLL_MAX, ACCENT),
     ];
     let (w, row_h) = (180.0, 16.0);
     let panel = Rect::from_min_size(
@@ -280,7 +314,13 @@ fn meters(ui: &mut egui::Ui, s: &Session) {
     painter.rect_filled(panel, 4.0, Color32::from_black_alpha(170));
     for (i, (label, value, colour)) in rows.iter().enumerate() {
         let y = panel.top() + 4.0 + i as f32 * row_h;
-        painter.text(Pos2::new(panel.left() + 8.0, y + row_h / 2.0), egui::Align2::LEFT_CENTER, label, egui::FontId::monospace(11.0), Color32::LIGHT_GRAY);
+        painter.text(
+            Pos2::new(panel.left() + 8.0, y + row_h / 2.0),
+            egui::Align2::LEFT_CENTER,
+            label,
+            egui::FontId::monospace(11.0),
+            Color32::LIGHT_GRAY,
+        );
         let bar = Rect::from_min_size(Pos2::new(panel.left() + 72.0, y + 4.0), Vec2::new(w - 82.0, row_h - 8.0));
         painter.rect_stroke(bar, 1.0, (1.0, Color32::from_gray(80)), StrokeKind::Inside);
         let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * value.clamp(0.0, 1.0), bar.height()));
@@ -319,13 +359,25 @@ fn to_toml(s: &Session) -> String {
     let w = |w: &Weights| format!("{{ hiss = {:.2}, click = {:.2}, loud = {:.2} }}", w.hiss, w.click, w.loud);
     let mut out = String::new();
     let _ = writeln!(out, "# from `static preview` at {}", clock(s.transport.position()));
-    let _ = writeln!(out, "stillness = {{ baseline = {:.2}, response = {:.2}, invert = {} }}", st.baseline, st.response, st.invert);
+    let _ = writeln!(
+        out,
+        "stillness = {{ baseline = {:.2}, response = {:.2}, invert = {} }}",
+        st.baseline, st.response, st.invert
+    );
     let _ = writeln!(out, "snow_mix = {}", w(&look.snow));
     let _ = writeln!(out, "jitter_mix = {}", w(&look.jitter));
+    let _ = writeln!(out, "tear_mix = {}", w(&look.tear));
+    let _ = writeln!(out, "chroma_mix = {}", w(&look.chroma));
     let _ = writeln!(out, "hiss = {{ attack = {}, release = {} }}", ms(p.hiss.attack), ms(p.hiss.release));
     let _ = writeln!(out, "loud = {{ attack = {}, release = {} }}", ms(p.loud.attack), ms(p.loud.release));
     let _ = writeln!(out, "clicks = {{ decay = {} }}", ms(p.click_decay));
     let _ = writeln!(out, "snow = {{ rows = {} }}", s.settings.snow_rows as u32);
+    let c = &s.settings.crt;
+    let _ = writeln!(
+        out,
+        "crt = {{ scanlines = {:.2}, vignette = {:.2}, bloom = {:.2}, persistence = {:.2} }}",
+        c.scanlines, c.vignette, c.bloom, c.persistence
+    );
     let _ = write!(out, "# seed = {} (goes in [meta])", s.settings.seed);
     out
 }

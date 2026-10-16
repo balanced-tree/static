@@ -119,8 +119,7 @@ impl SceneArgs {
             (Some(path), _) => Some(analysis::Features::load(path)?),
             (None, Some(audio)) => {
                 let started = Instant::now();
-                let params =
-                    analysis::AnalysisParams { fps: FPS, click_threshold: analysis::DEFAULT_CLICK_THRESHOLD };
+                let params = analysis::AnalysisParams { fps: FPS, click_threshold: analysis::DEFAULT_CLICK_THRESHOLD };
                 let features = analysis::analyse_audio(&audio.to_mono(), &params);
                 eprintln!("analysed audio in {:.2?} ({} clicks)", started.elapsed(), features.clicks.len());
                 Some(features)

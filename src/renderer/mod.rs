@@ -249,21 +249,32 @@ impl Renderer {
         });
 
         let photo_view = photo_tex.create_view(&Default::default());
-        let scene = Pass::new(device, "scene", SCENE_SHADER, SCENE_FORMAT, &[
-            Binding::Uniform(&globals),
-            Binding::Texture(&photo_view),
-            Binding::Sampler(&sampler),
-        ]);
-        let bloom = Pass::new(device, "bloom", BLOOM_SHADER, SCENE_FORMAT, &[
-            Binding::Texture(&scene_view),
-            Binding::Sampler(&clamped),
-        ]);
-        let crt = Pass::new(device, "crt", CRT_SHADER, TARGET_FORMAT, &[
-            Binding::Uniform(&globals),
-            Binding::Texture(&scene_view),
-            Binding::Texture(&bloom_view),
-            Binding::Sampler(&clamped),
-        ]);
+        let scene = Pass::new(
+            device,
+            "scene",
+            SCENE_SHADER,
+            SCENE_FORMAT,
+            &[Binding::Uniform(&globals), Binding::Texture(&photo_view), Binding::Sampler(&sampler)],
+        );
+        let bloom = Pass::new(
+            device,
+            "bloom",
+            BLOOM_SHADER,
+            SCENE_FORMAT,
+            &[Binding::Texture(&scene_view), Binding::Sampler(&clamped)],
+        );
+        let crt = Pass::new(
+            device,
+            "crt",
+            CRT_SHADER,
+            TARGET_FORMAT,
+            &[
+                Binding::Uniform(&globals),
+                Binding::Texture(&scene_view),
+                Binding::Texture(&bloom_view),
+                Binding::Sampler(&clamped),
+            ],
+        );
 
         Self { width, height, settings, scene, bloom, crt, globals, scene_view, bloom_view, target, target_view }
     }
@@ -404,8 +415,10 @@ impl Pass {
                 Binding::Sampler(_) => sampler_entry(i),
             })
             .collect();
-        let layout =
-            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor { label: Some(label), entries: &layout_entries });
+        let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some(label),
+            entries: &layout_entries,
+        });
         let entries: Vec<_> = bindings
             .iter()
             .zip(0..)
@@ -418,8 +431,11 @@ impl Pass {
                 },
             })
             .collect();
-        let bind_group =
-            device.create_bind_group(&wgpu::BindGroupDescriptor { label: Some(label), layout: &layout, entries: &entries });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some(label),
+            layout: &layout,
+            entries: &entries,
+        });
         Self { pipeline: fullscreen_pipeline(device, label, shader, &layout, format), bind_group }
     }
 }
@@ -491,7 +507,11 @@ mod tests {
     use super::*;
 
     fn noisy(index: u32) -> FrameInputs {
-        FrameInputs { index, disturbance: Disturbance { snow: 0.8, jitter: 0.6, tear: 0.0, chroma: 0.0 }, ..Default::default() }
+        FrameInputs {
+            index,
+            disturbance: Disturbance { snow: 0.8, jitter: 0.6, tear: 0.0, chroma: 0.0 },
+            ..Default::default()
+        }
     }
 
     fn settings(crt: Crt) -> RenderSettings {

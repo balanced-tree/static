@@ -9,7 +9,10 @@ use crate::analysis::Interleaved;
 enum Clock {
     Audio(Player),
     /// `started` is set while running; position = base + time since started.
-    Wall { base: f64, started: Option<Instant> },
+    Wall {
+        base: f64,
+        started: Option<Instant>,
+    },
 }
 
 pub struct Transport {

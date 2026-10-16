@@ -15,7 +15,7 @@ const ROLL_STRENGTH: f32 = 0.8;
 /// How long a roll takes to settle back, in seconds.
 const ROLL_SECS: f32 = 0.32;
 /// Vertical offset of a full-strength roll, as a fraction of the frame height.
-const ROLL_MAX: f32 = 0.35;
+pub const ROLL_MAX: f32 = 0.35;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TearEvent {
