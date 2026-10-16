@@ -7,6 +7,10 @@ edition = "2024"
 anyhow = "1.0.104"
 bytemuck = { version = "1.25.2", features = ["derive"] }
 clap = { version = "4.6.7", features = ["derive"] }
+cpal = "0.18.2"
+egui = "0.37.0"
+egui-wgpu = "0.37.0"
+egui-winit = "0.37.0"
 hound = "3.5.1"
 image = "0.25.10"
 pollster = "1.0.1"
