@@ -188,7 +188,7 @@ struct FrameSource<'a> {
 
 impl<'a> FrameSource<'a> {
     fn new(project: &Project, show: &'a Show, width: u32, height: u32) -> Result<Self> {
-        ensure!(width % 2 == 0 && height % 2 == 0, "width and height must be even for yuv420p");
+        ensure!(width.is_multiple_of(2) && height.is_multiple_of(2), "width and height must be even for yuv420p");
         let assets = AssetCache::new(width, height).assets(show.timeline());
         let gpu = Gpu::new(Gpu::instance(), None)?;
         let settings = RenderSettings { fps: FPS, seed: project.seed };
