@@ -1,0 +1,8 @@
+/target
+/out
+
+# Source media stays local (large / personal). Fonts are tracked.
+/audio/*
+!/audio/.gitkeep
+/photos/*
+!/photos/.gitkeep
