@@ -11,7 +11,7 @@ mod plot;
 mod spectral;
 
 pub use decode::{Audio, Interleaved, read_wav};
-pub use features::{ClickEvent, FeatureFrame, Features, SmoothingParams};
+pub use features::{ClickEvent, Envelope, FeatureFrame, Features, SmoothingParams};
 pub use plot::write_svg;
 
 use std::path::Path;

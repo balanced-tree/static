@@ -59,6 +59,8 @@ impl Stillness {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Look {
+    /// The preset this look started from (its values may since be tuned).
+    pub preset: StillnessMode,
     pub snow: Weights,
     pub jitter: Weights,
     pub stillness: Stillness,
@@ -67,6 +69,7 @@ pub struct Look {
 impl Look {
     pub fn new(mode: StillnessMode) -> Self {
         Self {
+            preset: mode,
             snow: Weights { hiss: 0.6, click: 0.1, loud: 0.5 },
             jitter: Weights { hiss: 0.4, click: 0.2, loud: 0.6 },
             stillness: Stillness::preset(mode),
