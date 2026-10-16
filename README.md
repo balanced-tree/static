@@ -20,11 +20,13 @@ cargo run -- frame --photo photos/di_box.jpg --focus 0.5,0.4 -o out/di_box.png
 cargo run -- analyse audio/still_charged.wav
 cargo run -- analyse audio/still_charged.wav --click-threshold 3   # more clicks
 
-# Print the smoothed feature values at a frame
-cargo run -- frame --features out/still_charged.features.bin --frame 1500
+# Render a frame reacting to the audio (prints the feature values and disturbance)
+cargo run -- frame --photo photos/di_box.jpg --features out/still_charged.features.bin --frame 1500
+# …or a run of frames: out/frame_001500.png, out/frame_001501.png, …
+cargo run -- frame --features out/still_charged.features.bin --frame 1500 --count 25
 
-# Live preview window (Esc to close)
-cargo run -- preview --photo photos/light_switch.jpg
+# Live preview window, looping over the piece (Esc to close; no audio yet)
+cargo run -- preview --photo photos/light_switch.jpg --features out/still_charged.features.bin
 ```
 
 Options shared by `frame` and `preview`:
@@ -34,8 +36,12 @@ Options shared by `frame` and `preview`:
 | `--photo <path>` | Photo to show. Omit for a generated test card. |
 | `--fit fill\|contain` | `fill` crops to 16:9, `contain` letterboxes on black. |
 | `--focus x,y` | Crop centre for `fill`, normalised 0..1. |
+| `--features <file>` | Features from `analyse`. Without it the photo stays at rest. |
+| `--stillness <mode>` | `still-at-rest` (default), `always-restless` or `inverted`. |
+| `--seed N` | Seed for all noise: a different but repeatable take. |
+| `--snow-rows N` | Snow grid rows (default 540). Lower = chunkier snow. |
 
-`frame` also takes `--frame N`, `-o/--out`, `--width`, `--height` (default 3840×2160) and `--features <file>`.
+`frame` also takes `--frame N`, `--count N`, `-o/--out`, `--width` and `--height` (default 3840×2160).
 `preview` renders internally at `--width`/`--height` (default 1920×1080) and scales the result to the window.
 
 ## Testing
