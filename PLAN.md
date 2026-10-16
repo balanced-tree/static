@@ -78,7 +78,7 @@ nannou is pleasant for sketching, but it has historically trailed `wgpu` release
 
 ## 4. Audio analysis (`static analyse`)
 
-The WAV is decoded (any common sample rate or bit depth: 16/24-bit int or 32-bit float) and summed to mono, then analysed with a short-time FFT (e.g. 2048-sample window, hop size aligned to the video frame rate). The results are written as one feature vector per video frame.
+The WAV is decoded (any common sample rate or bit depth: 16/24-bit int or 32-bit float) and summed to mono, then analysed with a short-time FFT: a 4096-sample Hann window centred on each video frame (hop = sample rate / 25). The results are written as one feature vector per video frame to `out/<wav name>.features.bin`, with an SVG plot of every feature next to it (`.features.svg`).
 
 ### Primary features
 
@@ -88,13 +88,13 @@ The WAV is decoded (any common sample rate or bit depth: 16/24-bit int or 32-bit
 - Combined into `hiss ∈ [0,1]`, smoothed with a slow attack/release envelope.
 
 **Clicks / transients → "tears"**
-- **Spectral flux** (positive change in magnitude between frames), plus adaptive-threshold peak picking to get discrete onset events.
+- **Spectral flux** (positive change in log-magnitude) on a finer grid (1024-sample windows every 256 samples, ≈ 5 ms), then adaptive-threshold peak picking. The threshold is the local median **plus *k* × the local spread** (MAD, over ±150 ms), so clicks still register on top of steady loud hiss. *k* = `--click-threshold` (default 4; lower = more clicks). On the synthetic test material it found every isolated click with no false positives. Clicks closer together than ~50 ms merge, which is finer than one 40 ms video frame anyway.
 - Outputs:
   - `click_env ∈ [0,1]`: fast attack, short exponential decay (a few frames).
   - `click_events`: list of onset times + strengths. Used to *seed* discrete glitch events (which scanline band tears, by how much), so each click looks different but stays deterministic.
 
 **Loudness → overall disturbance**
-- **RMS** (or a K-weighted approximation), converted to dB and normalised over the piece.
+- **RMS** over each frame's own samples, converted to dB and normalised over the piece.
 - `loud ∈ [0,1]`, smoothed with a medium attack/release envelope.
 - **Louder = more snow and distortion.** `loud` scales snow density, jitter amplitude and tear strength together, on top of what `hiss` and clicks contribute on their own (see §5, "Disturbance mix").
 
@@ -102,7 +102,8 @@ The WAV is decoded (any common sample rate or bit depth: 16/24-bit int or 32-bit
 - **Mains hum (optional, off by default, likely unused)**: energy in narrow bands at 50, 100, 150, 200 … Hz. It could drive a slow, constant shimmer or roll bar. It is computed during analysis because it's cheap, but nothing reads it unless a cue enables it (`hum = { enabled = true }`). It is low priority: build it last, or skip it entirely.
 
 ### Normalisation & smoothing
-- Normalise each feature to the 5th–95th percentile across the **whole piece** (possible because analysis is offline), so quiet passages still register.
+- Normalise each feature to the 5th–95th percentile across the **whole piece** (possible because analysis is offline), so quiet passages still register. Frames below −70 dBFS count as silence: every feature reads 0 there and they are left out of the percentiles.
+- The file stores **unsmoothed** normalised values. Smoothing (attack/release envelopes, click decay) is applied when the file is loaded, so it can be retuned without re-analysing.
 - Every feature exposes `attack`, `release`, `gain` and `curve` (gamma) in `timeline.toml`, so you can tune them per passage.
 
 ---
@@ -329,7 +330,7 @@ Static/
 ## 11. Milestones
 
 1. ✅ **Skeleton:** cargo project, CLI, `wgpu` renders a photo to a window and headlessly to PNG.
-2. **Analysis:** decode, STFT, hiss + click features → `features.bin`, plus a debug plot or meter overlay to check them.
+2. ✅ **Analysis:** decode, STFT, hiss + click + loudness (+ optional hum) features → `features.bin`, plus an SVG debug plot.
 3. **Snow + jitter:** first audio-reactive shader layers on one photo.
 4. **Preview app:** audio playback, scrubbing, egui sliders.
 5. **Tears + CRT:** click-driven displacement, scanlines, persistence.
