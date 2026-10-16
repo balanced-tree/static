@@ -25,9 +25,13 @@ cargo run -- frame --photo photos/di_box.jpg --features out/still_charged.featur
 # …or a run of frames: out/frame_001500.png, out/frame_001501.png, …
 cargo run -- frame --features out/still_charged.features.bin --frame 1500 --count 25
 
-# Live preview window, looping over the piece (Esc to close; no audio yet)
-cargo run -- preview --photo photos/light_switch.jpg --features out/still_charged.features.bin
+# Live preview window with audio playback, scrubbing and live sliders
+cargo run -- preview --photo photos/light_switch.jpg --audio audio/still_charged.wav
+# --audio alone analyses on the fly; add --features to use a saved analysis instead
+cargo run -- preview --audio audio/still_charged.wav --features out/still_charged.features.bin
 ```
+
+Preview keys: Space play/pause · ←/→ 5 s (⇧ one frame) · Home loop start · L loop · I/O loop in/out · H hide panels · M feature meters · Esc quit. Click or drag the strip under the transport to seek. **Copy as TOML** copies the current slider values (and prints them to the terminal) in the shape `timeline.toml` cues will use.
 
 Options shared by `frame` and `preview`:
 
@@ -36,7 +40,8 @@ Options shared by `frame` and `preview`:
 | `--photo <path>` | Photo to show. Omit for a generated test card. |
 | `--fit fill\|contain` | `fill` crops to 16:9, `contain` letterboxes on black. |
 | `--focus x,y` | Crop centre for `fill`, normalised 0..1. |
-| `--features <file>` | Features from `analyse`. Without it the photo stays at rest. |
+| `--audio <wav>` | The WAV. Played back in `preview`; analysed on the fly if there is no `--features`. |
+| `--features <file>` | Features from `analyse`. Without it (or `--audio`) the photo stays at rest. |
 | `--stillness <mode>` | `still-at-rest` (default), `always-restless` or `inverted`. |
 | `--seed N` | Seed for all noise: a different but repeatable take. |
 | `--snow-rows N` | Snow grid rows (default 540). Lower = chunkier snow. |
