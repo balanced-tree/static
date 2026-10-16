@@ -120,7 +120,7 @@ mod tests {
         assert_eq!(look.disturbance(&SILENT), Disturbance::default());
         let d = look.disturbance(&LOUD);
         assert_eq!((d.snow, d.jitter, d.tear), (1.0, 1.0, 1.0));
-        assert_eq!(d.chroma, 0.9f32.powf(1.3), "mix 0.9 through the response curve");
+        assert!((d.chroma - 0.9f32.powf(1.3)).abs() < 1e-6, "mix 0.9 through the response curve: {}", d.chroma);
     }
 
     #[test]
