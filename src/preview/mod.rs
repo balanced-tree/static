@@ -65,6 +65,8 @@ struct State {
     egui_ctx: egui::Context,
     egui_state: egui_winit::State,
     egui_renderer: egui_wgpu::Renderer,
+    /// Textures egui released last frame; freed once that frame is painted.
+    textures_to_free: Vec<egui::TextureId>,
     session: Session,
 }
 
@@ -114,7 +116,19 @@ impl State {
             settings,
             ui: UiState::new(preset, w as f32 / h as f32),
         };
-        Ok(Self { window, surface, config, gpu, renderer, blit, egui_ctx, egui_state, egui_renderer, session })
+        Ok(Self {
+            window,
+            surface,
+            config,
+            gpu,
+            renderer,
+            blit,
+            egui_ctx,
+            egui_state,
+            egui_renderer,
+            textures_to_free: Vec::new(),
+            session,
+        })
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -128,8 +142,21 @@ impl State {
         self.session.transport.update();
         let input = self.egui_state.take_egui_input(&self.window);
         let ctx = self.egui_ctx.clone();
-        let output = ctx.run_ui(input, |ui| ui::draw(ui, &mut self.session));
+        let mut output = ctx.run_ui(input, |ui| ui::draw(ui, &mut self.session));
         self.egui_state.handle_platform_output(&self.window, output.platform_output);
+        // Apply texture changes before any early return: egui only sends each
+        // upload once (the font atlas on the first frame), and the delta must
+        // not be dropped unapplied.
+        let (device, queue) = (&self.gpu.device, &self.gpu.queue);
+        for id in self.textures_to_free.drain(..) {
+            self.egui_renderer.free_texture(&id);
+        }
+        for (id, deltas) in output.textures_delta.set.drain() {
+            for delta in deltas {
+                self.egui_renderer.update_texture(device, queue, id, &delta);
+            }
+        }
+        self.textures_to_free.extend(output.textures_delta.free.drain());
         if self.session.ui.quit {
             return Ok(false);
         }
@@ -144,7 +171,6 @@ impl State {
             wgpu::CurrentSurfaceTexture::Validation => anyhow::bail!("surface validation error"),
         };
         let view = surface_texture.texture.create_view(&Default::default());
-        let (device, queue) = (&self.gpu.device, &self.gpu.queue);
         let mut encoder = device.create_command_encoder(&Default::default());
 
         self.renderer.set_settings(self.session.settings);
@@ -161,11 +187,6 @@ impl State {
             pixels_per_point: ppp,
         };
         let primitives = ctx.tessellate(output.shapes, ppp);
-        for (id, deltas) in &output.textures_delta.set {
-            for delta in deltas {
-                self.egui_renderer.update_texture(device, queue, *id, delta);
-            }
-        }
         let egui_commands = self.egui_renderer.update_buffers(device, queue, &mut encoder, &primitives, &screen);
         {
             let mut pass = encoder
@@ -185,9 +206,6 @@ impl State {
         queue.submit(egui_commands.into_iter().chain([encoder.finish()]));
         self.window.pre_present_notify();
         queue.present(surface_texture);
-        for id in &output.textures_delta.free {
-            self.egui_renderer.free_texture(id);
-        }
         Ok(true)
     }
 }
