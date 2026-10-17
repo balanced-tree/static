@@ -64,7 +64,7 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 
 [[cue]]
 at = "0:18"
-photo = "photos/1.jpeg"
+photo = "photos/3-removebg.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -73,18 +73,30 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "1:10"
-photo = "photos/2.jpeg"
-crossfade = "12s"
+at = "0:59"
+photo = "photos/4-removebg.png"
+crossfade = "6s"
 transition = "noise_dissolve"
 stillness = { baseline = 0.15 }
-ramp = "12s"
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+ramp = "6s"
 
 [[cue]]
-at = "2:05"
+at = "1:20"
 colour = { chroma_split = 1.5 }   # stays grey: saturation is 0 throughout
 hiss = { gain = 1.4, release = "800ms" }
 ramp = "next"
+
+[[cue]]
+at = "2:18"
+photo = "photos/1-removebg-preview.png"
+crossfade = "6s"
+transition = "noise_dissolve"
+stillness = { baseline = 0.15 }
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+ramp = "6s"
 
 # Ending, relative to the end of the audio.
 [outro]
