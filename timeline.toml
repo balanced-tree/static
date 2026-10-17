@@ -63,8 +63,8 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 # PNG transparency and SVGs work too: the outline is then the drawn shape.
 
 [[cue]]
-at = "0:51"
-photo = "photos/6.png"
+at = "0:34"
+photo = "7.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -73,8 +73,8 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "1:30"
-photo = "photos/13.png"
+at = "1:11"
+photo = "13.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -83,8 +83,8 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "2:14"
-photo = "photos/7.png"
+at = "1:59"
+photo = "6.png"
 crossfade = "6s"
 transition = "noise_dissolve"
 stillness = { baseline = 0.15 }
@@ -94,7 +94,7 @@ ramp = "3s"
 
 [[cue]]
 at = "2:58"
-photo = "photos/9.png"
+photo = "9.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -110,7 +110,7 @@ ramp = "next"
 
 [[cue]]
 at = "3:27"
-photo = "photos/8.png"
+photo = "8.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -120,7 +120,7 @@ stillness = { mode = "still_at_rest" }
 
 [[cue]]
 at = "4:10"
-photo = "photos/10.png"
+photo = "10.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -130,7 +130,7 @@ stillness = { mode = "still_at_rest" }
 
 [[cue]]
 at = "4:52"
-photo = "photos/11.png"
+photo = "11.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -140,7 +140,7 @@ stillness = { mode = "still_at_rest" }
 
 [[cue]]
 at = "5:19"
-photo = "photos/12.png"
+photo = "12.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -150,7 +150,7 @@ stillness = { mode = "still_at_rest" }
 
 [[cue]]
 at = "5:50"
-photo = "photos/6.png"
+photo = "6.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -160,7 +160,7 @@ stillness = { mode = "still_at_rest" }
 
 [[cue]]
 at = "6:02"
-photo = "photos/4-removebg.png"
+photo = "4-removebg.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
