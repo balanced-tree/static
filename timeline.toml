@@ -63,7 +63,7 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 # PNG transparency and SVGs work too: the outline is then the drawn shape.
 
 [[cue]]
-at = "0:34"
+at = "0:20"
 photo = "7.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
