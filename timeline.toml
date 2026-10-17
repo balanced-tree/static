@@ -37,7 +37,7 @@ letter_spacing = 0.08             # em
 appear = "2s"
 reveal = "noise"                  # "noise" (resolves out of the static) | "fade" | "cut"
 reveal_time = "2.5s"
-hold = "20s"
+hold = "17s"
 vanish = "noise"
 vanish_time = "2.5s"
 disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves with the signal
@@ -63,7 +63,7 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 # PNG transparency and SVGs work too: the outline is then the drawn shape.
 
 [[cue]]
-at = "0:25"
+at = "0:30"
 photo = "photos/7.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -73,9 +73,9 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "1:11"
-photo = "photos/6.png"
-transition = "cut"
+at = "1:14"
+photo = "photos/8.png"
+transition = "dissolve"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -84,7 +84,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "1:59"
+at = "2:02"
 photo = "photos/9.png"
 crossfade = "4s"
 transition = "noise_dissolve"
@@ -94,7 +94,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 ramp = "3s"
 
 [[cue]]
-at = "2:58"
+at = "2:59"
 photo = "photos/13.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -103,24 +103,24 @@ scale = 0.6                     # try with react below: only the photo reacts
 react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
 stillness = { mode = "still_at_rest" }
 
-[[cue]]
-at = "3:09"
-colour = { chroma_split = 1.5 }   # stays grey: saturation is 0 throughout
-hiss = { gain = 1.4, release = "800ms" }
-ramp = "next"
+#[[cue]]
+#at = "3:09"
+#colour = { chroma_split = 1.5 }   # stays grey: saturation is 0 throughout
+#hiss = { gain = 1.4, release = "800ms" }
+#ramp = "next"
+
+#[[cue]]
+#at = "3:17"
+#photo = "photos/8.png"
+#fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
+#focus = [0.45, 0.55]              # crop centre for "fill"
+## soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+#scale = 0.6                     # try with react below: only the photo reacts
+#react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+#stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "3:27"
-photo = "photos/8.png"
-fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
-focus = [0.45, 0.55]              # crop centre for "fill"
-# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
-scale = 0.6                     # try with react below: only the photo reacts
-react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
-stillness = { mode = "still_at_rest" }
-
-[[cue]]
-at = "4:10"
+at = "3:07"
 photo = "photos/10.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -130,7 +130,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "4:52"
+at = "3:58"
 photo = "photos/11.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -140,7 +140,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "5:19"
+at = "4:49"
 photo = "photos/12.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -150,7 +150,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "5:50"
+at = "5:30"
 photo = "photos/6.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
@@ -160,7 +160,7 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "6:02"
+at = "6:00"
 photo = "photos/4-removebg.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
