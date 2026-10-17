@@ -14,7 +14,7 @@ seed = 1234
 # Opening: what shows before the first cue's photo, and how it resolves.
 [intro]
 scene = "static"                  # "static" | "black" | "photo" (first cue's photo from the start)
-hold = "10s"                      # how long it stays
+hold = "30s"                      # how long it stays
 resolve = "8s"                    # transition into the first cue's photo, starting at `hold`
 transition = "noise_dissolve"     # "noise_dissolve" | "dissolve" | "cut"
 # Parameter groups work here too, as the starting values:
@@ -37,7 +37,7 @@ letter_spacing = 0.08             # em
 appear = "2s"
 reveal = "noise"                  # "noise" (resolves out of the static) | "fade" | "cut"
 reveal_time = "2.5s"
-hold = "17s"
+hold = "27s"
 vanish = "noise"
 vanish_time = "2.5s"
 disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves with the signal
@@ -69,13 +69,13 @@ fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
 scale = 0.6                     # try with react below: only the photo reacts
-react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+react = { background = 0.0, image = 0.9, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "1:14"
+at = "1:15"
 photo = "photos/8.png"
-transition = "dissolve"
+transition = "cut"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -84,18 +84,19 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "2:02"
-photo = "photos/9.png"
+at = "1:51"
+photo = "photos/13.png"
 crossfade = "4s"
 transition = "noise_dissolve"
 stillness = { baseline = 0.15 }
 scale = 0.6                     # try with react below: only the photo reacts
-react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
-ramp = "3s"
+react = { background = 0.0, image = 1.0, edge = 0.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+ramp = "2s"
 
 [[cue]]
-at = "2:59"
-photo = "photos/13.png"
+at = "2:33"
+photo = "photos/9.png"
+transition = "cut"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -120,8 +121,9 @@ stillness = { mode = "still_at_rest" }
 #stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "3:07"
+at = "3:09"
 photo = "photos/10.png"
+transition = "cut"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -130,18 +132,41 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "3:58"
+at = "3:25"
+photo = "photos/10.png"
+transition = "cut"
+fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
+focus = [0.45, 0.55]              # crop centre for "fill"
+# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0, image = 0.9, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+stillness = { mode = "still_at_rest" }
+
+[[cue]]
+at = "3:57"
+photo = "photos/11.png"
+transition = "cut"
+fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
+focus = [0.45, 0.55]              # crop centre for "fill"
+# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+stillness = { mode = "still_at_rest" }
+
+[[cue]]
+at = "4:19"
 photo = "photos/11.png"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
 scale = 0.6                     # try with react below: only the photo reacts
-react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+react = { background = 0.0, image = 1.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "4:49"
+at = "4:51"
 photo = "photos/12.png"
+transition = "cut"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
@@ -150,23 +175,25 @@ react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0
 stillness = { mode = "still_at_rest" }
 
 [[cue]]
-at = "5:30"
-photo = "photos/6.png"
-fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
-focus = [0.45, 0.55]              # crop centre for "fill"
-# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
-scale = 0.6                     # try with react below: only the photo reacts
-react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
-stillness = { mode = "still_at_rest" }
-
-[[cue]]
-at = "6:00"
+at = "5:28"
 photo = "photos/4-removebg.png"
+transition = "cut"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
 scale = 0.6                     # try with react below: only the photo reacts
 react = { background = 0.0, image = 0.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
+stillness = { mode = "still_at_rest" }
+
+[[cue]]
+at = "5:51"
+photo = "photos/4-removebg.png"
+transition = "cut"
+fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
+focus = [0.45, 0.55]              # crop centre for "fill"
+# soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0, image = 1.0, edge = 1.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
 stillness = { mode = "still_at_rest" }
 
 # Ending, relative to the end of the audio.
