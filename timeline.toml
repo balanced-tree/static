@@ -22,7 +22,7 @@ transition = "noise_dissolve"     # "noise_dissolve" | "dissolve" | "cut"
 colour = { saturation = 0.0 }     # black and white throughout
 # Soft passages shouldn't shake the picture: no jitter below the threshold,
 # and less hiss in the mix (hiss is high even when the sound is quiet).
-jitter_mix = { hiss = 0.2, click = 0.2, loud = 0.8, threshold = 0.4 }
+jitter_mix = { hiss = 0.2, click = 0.2, loud = 0.7, threshold = 0.4 }
 
 [title]
 text = "still, charged"
