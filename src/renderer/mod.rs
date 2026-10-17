@@ -106,7 +106,7 @@ impl Gpu {
     }
 }
 
-/// Mirrors `Globals` in shaders/common.wgsl: 31 scalars and a pad, then the
+/// Mirrors `Globals` in shaders/common.wgsl: 35 scalars and a pad, then the
 /// vec4s (which must start on a 16-byte boundary).
 #[repr(C)]
 #[derive(Clone, Copy, Pod, Zeroable)]
@@ -141,6 +141,10 @@ struct Globals {
     contrast: f32,
     black_level: f32,
     grade_on: u32,
+    react_background: f32,
+    react_image: f32,
+    react_edge: f32,
+    edge_width: f32,
     _pad: u32,
     /// (seed, intensity, strength, unused) per event.
     events: [[f32; 4]; MAX_EVENTS],
@@ -166,6 +170,26 @@ impl Crt {
 impl Default for Crt {
     fn default() -> Self {
         crate::params::Params::default().crt()
+    }
+}
+
+/// Which parts of a photo scene carry the disturbance, each 0..1. Static is
+/// always fully disturbed.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct React {
+    /// Around the photo (where it is transparent or doesn't reach).
+    pub background: f32,
+    /// The photo itself.
+    pub image: f32,
+    /// A band along the photo's outline, on top of the other two.
+    pub edge: f32,
+    /// Half-width of that band, in frame heights.
+    pub edge_width: f32,
+}
+
+impl Default for React {
+    fn default() -> Self {
+        crate::params::Params::default().react()
     }
 }
 
@@ -200,6 +224,7 @@ pub struct FrameInputs {
     pub tears: Tears,
     pub scene: SceneMix,
     pub title: TitleState,
+    pub react: React,
     pub crt: Crt,
     pub grade: Grade,
     /// Rows of the virtual snow grid (540 = 4×4-pixel snow at 4K). The CRT
@@ -216,6 +241,7 @@ impl Default for FrameInputs {
             tears: Tears::default(),
             scene: SceneMix::steady(Scene { kind: SceneKind::Photo, layer: 0, soften: 0.0, gain: 1.0 }),
             title: TitleState::default(),
+            react: React::default(),
             crt: Crt::OFF,
             grade: Grade::NEUTRAL,
             snow_rows: 540.0,
@@ -279,10 +305,20 @@ impl Renderer {
         for (layer, photo) in assets.photos.iter().enumerate() {
             write_layer(gpu, &photos, layer as u32, photo.as_raw(), width * 4, size);
         }
-        let photos_view = photos.create_view(&wgpu::TextureViewDescriptor {
+        let array_view = wgpu::TextureViewDescriptor {
             dimension: Some(wgpu::TextureViewDimension::D2Array),
             ..Default::default()
-        });
+        };
+        let photos_view = photos.create_view(&array_view);
+
+        // Their outlines (signed distance fields), at a lower resolution.
+        let (ow, oh) = assets.outlines[0].dimensions();
+        let outline_size = wgpu::Extent3d { width: ow, height: oh, depth_or_array_layers: layers };
+        let outlines = texture("outlines", outline_size, wgpu::TextureFormat::R8Unorm, wgpu::TextureUsages::COPY_DST);
+        for (layer, outline) in assets.outlines.iter().enumerate() {
+            write_layer(gpu, &outlines, layer as u32, outline.as_raw(), ow, outline_size);
+        }
+        let outlines_view = outlines.create_view(&array_view);
 
         // Title coverage mask; a blank pixel when there is no title.
         let (title_size, title_data) = match &assets.title {
@@ -339,6 +375,7 @@ impl Renderer {
                 Binding::Sampler(&mirrored),
                 Binding::Texture(&title_view),
                 Binding::Sampler(&clamped),
+                Binding::TextureArray(&outlines_view),
             ],
         );
         let bloom = Pass::new(
@@ -382,6 +419,7 @@ impl Renderer {
     /// Records one frame into the offscreen target.
     pub fn encode(&self, gpu: &Gpu, encoder: &mut wgpu::CommandEncoder, frame: &FrameInputs) {
         let (d, t, crt, g, s) = (&frame.disturbance, &frame.tears, &frame.crt, &frame.grade, &frame.scene);
+        let react = &frame.react;
         let mut events = [[0.0; 4]; MAX_EVENTS];
         for (slot, e) in events.iter_mut().zip(&t.events[..t.count]) {
             // Click indices stay far below 2^24, so they survive as f32.
@@ -421,6 +459,10 @@ impl Renderer {
             black_level: g.black_level,
             // Skipped when neutral, so an ungraded frame is bit-exact.
             grade_on: (*g != Grade::NEUTRAL) as u32,
+            react_background: react.background,
+            react_image: react.image,
+            react_edge: react.edge,
+            edge_width: react.edge_width,
             _pad: 0,
             events,
             title_colour: [r, gr, b, 1.0],
@@ -656,8 +698,6 @@ fn fullscreen_pipeline(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use super::*;
     use crate::timeline::Transition;
 
@@ -668,8 +708,7 @@ mod tests {
             eprintln!("no GPU adapter; skipping");
             return None;
         };
-        let (width, height) = photos[0].dimensions();
-        let assets = Assets { width, height, photos: photos.into_iter().map(Arc::new).collect(), title: None };
+        let assets = Assets::from_photos(photos);
         let renderer = Renderer::new(&gpu, &assets, SETTINGS, &Shaders::embedded()).unwrap();
         Some((gpu, renderer))
     }
@@ -746,5 +785,44 @@ mod tests {
         let (lit, dark) =
             (noise.pixels().filter(|p| p.0[0] == 255).count(), noise.pixels().filter(|p| p.0[0] == 0).count());
         assert!(lit > 200 && dark > 200, "a noise dissolve swaps cell by cell ({lit} white, {dark} black)");
+    }
+
+    #[test]
+    fn react_keeps_the_background_still() {
+        // A grey photo in the middle third of a black frame.
+        let (w, h) = (192, 108);
+        let photo = RgbaImage::from_fn(w, h, |x, y| {
+            let inside = (w / 3..2 * w / 3).contains(&x) && (h / 3..2 * h / 3).contains(&y);
+            if inside { image::Rgba([128, 128, 128, 255]) } else { image::Rgba([0, 0, 0, 0]) }
+        });
+        let Some((gpu, renderer)) = setup(vec![photo.clone()]) else { return };
+        let stormy = |react| {
+            let mut tears = Tears { count: 1, roll: 0.0, ..Default::default() };
+            tears.events[0] = crate::tears::TearEvent { seed: 5, strength: 1.0, intensity: 1.0 };
+            let disturbance = Disturbance { snow: 0.9, jitter: 1.0, tear: 1.0, chroma: 1.0 };
+            render(&gpu, &renderer, FrameInputs { index: 4, disturbance, tears, react, snow_rows: 90.0, ..Default::default() })
+        };
+        let lit = |img: &RgbaImage, x0: u32, x1: u32, y0: u32, y1: u32| {
+            (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))).filter(|&(x, y)| img.get_pixel(x, y).0[0] > 0).count()
+        };
+        let corner = |img: &RgbaImage| lit(img, 0, w / 5, 0, h / 5);
+        let centre = |img: &RgbaImage| {
+            (4 * w / 9..5 * w / 9)
+                .flat_map(|x| (4 * h / 9..5 * h / 9).map(move |y| (x, y)))
+                .filter(|&(x, y)| img.get_pixel(x, y).0[0].abs_diff(photo.get_pixel(x, y).0[0]) > 2)
+                .count()
+        };
+
+        let everywhere = stormy(React::default());
+        assert!(corner(&everywhere) > 20, "by default the snow covers the background too");
+
+        let image_only = stormy(React { background: 0.0, ..React::default() });
+        assert_eq!(corner(&image_only), 0, "the background stays black");
+        assert!(centre(&image_only) > 20, "the photo still reacts");
+
+        let edges = stormy(React { background: 0.0, image: 0.0, edge: 1.0, edge_width: 0.04 });
+        assert_eq!(corner(&edges), 0, "the background away from the photo stays black");
+        assert_eq!(centre(&edges), 0, "the middle of the photo stays still");
+        assert!(lit(&edges, 0, w, 0, h) > lit(&photo, 0, w, 0, h), "the outline frays into the background");
     }
 }

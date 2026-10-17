@@ -44,6 +44,13 @@ struct Globals {
     contrast: f32,
     black_level: f32,
     grade_on: u32,
+    // Which parts of a photo scene carry the disturbance (see `React` in
+    // src/renderer/mod.rs): around the photo, the photo, a band of
+    // `edge_width` (frame heights) along its outline.
+    react_background: f32,
+    react_image: f32,
+    react_edge: f32,
+    edge_width: f32,
     _pad: u32,
     // Per click, newest first: (seed, intensity now, click strength, unused).
     events: array<vec4<f32>, 4>,

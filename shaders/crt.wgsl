@@ -46,9 +46,11 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let uv = in.uv;
     let aspect = globals.resolution.x / globals.resolution.y;
 
-    var c = scene_at(uv);
-    if (globals.chroma > 0.0) {
-        let split = vec2<f32>(globals.chroma * CHROMA_MAX / aspect, 0.0);
+    let scene = textureSampleLevel(scene_tex, crt_smp, uv, 0.0);
+    var c = scene.rgb;
+    // Alpha: this pixel's share of the disturbance (see scene.wgsl).
+    if (globals.chroma > 0.0 && scene.a > 0.0) {
+        let split = vec2<f32>(globals.chroma * scene.a * CHROMA_MAX / aspect, 0.0);
         c = vec3<f32>(scene_at(uv + split).r, c.g, scene_at(uv - split).b);
     }
     if (globals.bloom > 0.0) {

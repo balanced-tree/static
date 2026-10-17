@@ -30,8 +30,9 @@ fn snow_value(uv: vec2<f32>) -> f32 {
     return n;
 }
 
-fn apply_snow(linear: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
-    let s = globals.snow;
+// `share` scales the snow for parts of the frame that only partly react.
+fn apply_snow(linear: vec3<f32>, uv: vec2<f32>, share: f32) -> vec3<f32> {
+    let s = globals.snow * share;
     if (s <= 0.0) {
         return linear; // exactly the photo at rest
     }

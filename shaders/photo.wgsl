@@ -1,7 +1,13 @@
-// Photos (pre-framed on the CPU, one texture layer each), displaced by jitter.
+// Photos (pre-framed on the CPU, one texture layer each, transparent where
+// they don't cover the frame), displaced by jitter.
 
 @group(0) @binding(1) var photo_tex: texture_2d_array<f32>;
 @group(0) @binding(2) var photo_smp: sampler;
+// Per photo: signed distance to its outline, encoded 0..1 over ±SHAPE_RANGE.
+@group(0) @binding(5) var outline_tex: texture_2d_array<f32>;
+
+// Must match SHAPE_RANGE in src/assets.rs.
+const SHAPE_RANGE: f32 = 0.25;
 
 // Largest offsets at jitter = 1, as fractions of the frame height.
 const SHAKE_MAX: f32 = 0.004;
@@ -19,6 +25,12 @@ fn jittered_uv(uv: vec2<f32>) -> vec2<f32> {
     return uv + vec2<f32>((shake.x + wobble) / aspect, shake.y);
 }
 
-fn sample_photo(uv: vec2<f32>, layer: u32) -> vec3<f32> {
-    return textureSampleLevel(photo_tex, photo_smp, uv, layer, 0.0).rgb;
+fn sample_photo(uv: vec2<f32>, layer: u32) -> vec4<f32> {
+    return textureSampleLevel(photo_tex, photo_smp, uv, layer, 0.0);
+}
+
+// Distance from `uv` to the photo's outline in frame heights, positive inside.
+fn outline_distance(uv: vec2<f32>, layer: u32) -> f32 {
+    let v = textureSampleLevel(outline_tex, photo_smp, uv, layer, 0.0).r;
+    return (v - 0.5) * 2.0 * SHAPE_RANGE;
 }

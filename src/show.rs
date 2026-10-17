@@ -118,6 +118,7 @@ impl Show {
             tears,
             scene,
             title: self.timeline.title_at(secs),
+            react: p.react(),
             crt: p.crt(),
             grade: p.grade(),
             snow_rows: p[P::SnowRows],

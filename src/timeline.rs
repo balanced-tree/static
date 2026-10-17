@@ -394,6 +394,12 @@ impl TimelineFile {
                                 Some(other) => bail!("{label} fit: expected \"fill\" or \"contain\", got {other:?}"),
                             },
                             focus: s.pair("focus")?.unwrap_or([0.5, 0.5]),
+                            scale: match s.number("scale")? {
+                                Some(k) if k > 0.0 && k <= 1.0 => k as f32,
+                                Some(k) => bail!("{label} scale: expected more than 0 and at most 1, got {k}"),
+                                None => 1.0,
+                            },
+                            position: s.pair("position")?.unwrap_or([0.5, 0.5]),
                         },
                         soften: s.number("soften")?.unwrap_or(0.0).clamp(0.0, 1.0) as f32,
                     })),
@@ -441,7 +447,7 @@ impl TimelineFile {
         let scene = photo.map_or(
             SceneSpec::Photo(PhotoSpec {
                 path: PathBuf::new(),
-                framing: Framing { fit: Fit::Fill, focus: [0.5, 0.5] },
+                framing: Framing::default(),
                 soften: 0.0,
             }),
             SceneSpec::Photo,

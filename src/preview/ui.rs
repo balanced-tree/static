@@ -419,6 +419,7 @@ pub fn fit(area: Rect, aspect: f32) -> Rect {
 fn heading(group: &str) -> &'static str {
     match group {
         "stillness" => "Stillness",
+        "react" => "Where it reacts",
         "snow_mix" => "Snow mix",
         "jitter_mix" => "Jitter mix",
         "tear_mix" => "Tear mix",

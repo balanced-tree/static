@@ -116,6 +116,7 @@ Composited from back to front:
    - The photos are close-ups (DI boxes, light switches…), so each cue gets `fit` (`fill` crops to 16:9, `contain` letterboxes) and a `focus` point (normalised x/y) that controls the crop.
    - Close-up surface texture (plastic grain, screws, switch edges) should hold up well under jitter and snow.
    - **Any photo resolution is accepted.** At load, each photo is cropped to its `fit`/`focus` framing, then resized once on the CPU to the output resolution (Lanczos). If the crop is smaller than 3840×2160, the loader prints a warning with the upscale factor. Up to ~1.5× is usually invisible under the snow and CRT treatment. Beyond that, a per-cue `soften` option leans into the softness deliberately (slight blur + stronger grain) instead of showing upscaling artefacts.
+   - **Still background (added after M7):** a cue can shrink and place its photo (`scale`, `position`), and transparent PNG and SVG photos keep their shape. The `react` parameter group says how much of layers 2–4, and of the chroma split, each part carries: `background` (around the photo), `image`, and `edge` (a band of `edge_width` along the outline, found from a signed-distance texture computed per photo at load). The scene pass writes that share to its alpha for the CRT pass. Static scenes always react fully.
 2. **Signal displacement ("tears"):** driven by `click_env` / `click_events`
    - horizontal scanline-band offsets (VHS tracking tear)
    - block displacement / macro-blocking on strong clicks

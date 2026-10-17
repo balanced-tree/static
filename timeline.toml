@@ -54,6 +54,13 @@ disturb = 0.5                     # 0 = clean overlay, 1 = tears and dissolves w
 #   hiss / loud = { attack, release, gain, curve }      clicks = { decay, gain }
 #   snow = { rows }     crt = { scanlines, vignette, bloom, persistence }
 #   colour = { saturation, chroma_split, contrast, black_level, tint = "#rrggbb" }
+#   react  = { background, image, edge, edge_width }    which parts carry the disturbance, 0..1
+#            (default 1, 1, 0: everything). { background = 0 } keeps the black around the photo
+#            still; { background = 0, image = 0, edge = 1 } makes only the photo's outline react.
+#
+# A photo cue can also shrink and place its photo so the background shows around it:
+#   scale = 0.6, position = [0.5, 0.5]   (box size as a fraction of the frame; its centre)
+# PNG transparency and SVGs work too: the outline is then the drawn shape.
 
 [[cue]]
 at = "0:18"
@@ -61,6 +68,8 @@ photo = "photos/1.jpeg"
 fit = "fill"                      # "fill" crops to 16:9 | "contain" letterboxes
 focus = [0.45, 0.55]              # crop centre for "fill"
 # soften = 0.5                    # blur + coarser grain for a heavily upscaled photo
+scale = 0.6                     # try with react below: only the photo reacts
+react = { background = 0.0 }    # or { background = 0.0, image = 0.0, edge = 1.0 }
 stillness = { mode = "still_at_rest" }
 
 [[cue]]

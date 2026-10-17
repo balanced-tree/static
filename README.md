@@ -37,6 +37,8 @@ cargo run -- frame --photo photos/di_box.jpg --focus 0.5,0.4 -o out/di_box.png
 
 Missing photos show the test card and a missing title font hides the title, with a warning, so the timeline previews before the material is in place. Typos in the timeline are errors.
 
+**Still background.** By default the disturbance covers the whole frame. To make only the photo react, shrink it on its cue (`scale = 0.6`, optionally `position = [x, y]`) so black background shows around it, then set `react = { background = 0 }`. `react = { background = 0, image = 0, edge = 1 }` goes further: only a band along the photo's outline (`edge_width`, in frame heights) crackles and frays, and the middle stays still. Transparent PNGs and SVGs work as photos. Their outline is the shape itself, not the rectangle. The static intro and outro always fill the screen.
+
 **Preview.** Sliders show each parameter at the playhead; moving one *overrides* it for the whole piece (× clears it). **Copy as TOML** turns the overrides into a `[[cue]]` at the playhead, ready to paste. Saving `timeline.toml` or a `.wgsl` file reloads it; errors show over the frame and the last working version stays. Keys: Space play/pause · ←/→ 5 s (⇧ one frame) · [ ] previous/next cue · Home loop start · L loop · I/O loop in/out · H hide panels · M meters · Esc quit. Click or drag the strip under the transport to seek; yellow marks are cues.
 
 Options shared by `frame` and `preview`:
@@ -65,7 +67,7 @@ cargo test
 
 ## Folders
 
-- `photos/`: your object photos (not committed)
+- `photos/`: your object photos: JPEG/PNG, or SVG (rendered sharp at the output size); transparency shows the background (not committed)
 - `audio/`: the WAV (not committed)
 - `fonts/`: TTF/OTF files for the title (`timeline.toml` expects `fonts/title.ttf`)
 - `shaders/`: WGSL shaders

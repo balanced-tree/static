@@ -6,7 +6,7 @@
 //! e.g. `hiss = { gain = 1.4, release = "800ms" }`.
 
 use crate::look::{Look, Stillness, Weights};
-use crate::renderer::{Crt, Grade};
+use crate::renderer::{Crt, Grade, React};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Kind {
@@ -82,9 +82,13 @@ pub enum P {
     TintR,
     TintG,
     TintB,
+    ReactBackground,
+    ReactImage,
+    ReactEdge,
+    ReactEdgeWidth,
 }
 
-pub const COUNT: usize = P::TintB as usize + 1;
+pub const COUNT: usize = P::ReactEdgeWidth as usize + 1;
 
 pub const SPECS: [Spec; COUNT] = [
     spec("stillness", "baseline", 0.0, 0.0, 1.0, Number),
@@ -128,11 +132,16 @@ pub const SPECS: [Spec; COUNT] = [
     spec("colour", "tint.r", 1.0, 0.0, 1.0, Channel),
     spec("colour", "tint.g", 1.0, 0.0, 1.0, Channel),
     spec("colour", "tint.b", 1.0, 0.0, 1.0, Channel),
+    spec("react", "background", 1.0, 0.0, 1.0, Number),
+    spec("react", "image", 1.0, 0.0, 1.0, Number),
+    spec("react", "edge", 0.0, 0.0, 1.0, Number),
+    spec("react", "edge_width", 0.04, 0.005, 0.2, Number),
 ];
 
 /// Parameter groups in display order.
-pub const GROUPS: [&str; 11] = [
+pub const GROUPS: [&str; 12] = [
     "stillness",
+    "react",
     "snow_mix",
     "jitter_mix",
     "tear_mix",
@@ -197,6 +206,15 @@ impl Params {
         }
     }
 
+    pub fn react(&self) -> React {
+        React {
+            background: self[P::ReactBackground],
+            image: self[P::ReactImage],
+            edge: self[P::ReactEdge],
+            edge_width: self[P::ReactEdgeWidth],
+        }
+    }
+
     pub fn grade(&self) -> Grade {
         Grade {
             saturation: self[P::Saturation],
@@ -229,6 +247,7 @@ mod tests {
         assert_eq!(SPECS[P::TintB as usize].key, "tint.b");
         assert_eq!(SPECS[P::JitterThreshold as usize].group, "jitter_mix");
         assert_eq!(SPECS[P::ChromaThreshold as usize].key, "threshold");
+        assert_eq!(SPECS[P::ReactEdgeWidth as usize].key, "edge_width");
         for g in GROUPS {
             assert!(group(g).next().is_some(), "empty group {g}");
         }

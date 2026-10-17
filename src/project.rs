@@ -80,7 +80,11 @@ impl Project {
             None => {
                 let photo = args.photo.as_ref().map(|path| PhotoSpec {
                     path: path.clone(),
-                    framing: Framing { fit: args.fit.unwrap_or(Fit::Fill), focus: args.focus.unwrap_or([0.5, 0.5]) },
+                    framing: Framing {
+                        fit: args.fit.unwrap_or(Fit::Fill),
+                        focus: args.focus.unwrap_or([0.5, 0.5]),
+                        ..Default::default()
+                    },
                     soften: 0.0,
                 });
                 let stillness = Stillness::preset(args.stillness.unwrap_or(StillnessMode::StillAtRest));
