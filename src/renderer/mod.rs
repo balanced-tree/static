@@ -305,10 +305,8 @@ impl Renderer {
         for (layer, photo) in assets.photos.iter().enumerate() {
             write_layer(gpu, &photos, layer as u32, photo.as_raw(), width * 4, size);
         }
-        let array_view = wgpu::TextureViewDescriptor {
-            dimension: Some(wgpu::TextureViewDimension::D2Array),
-            ..Default::default()
-        };
+        let array_view =
+            wgpu::TextureViewDescriptor { dimension: Some(wgpu::TextureViewDimension::D2Array), ..Default::default() };
         let photos_view = photos.create_view(&array_view);
 
         // Their outlines (signed distance fields), at a lower resolution.
@@ -800,7 +798,11 @@ mod tests {
             let mut tears = Tears { count: 1, roll: 0.0, ..Default::default() };
             tears.events[0] = crate::tears::TearEvent { seed: 5, strength: 1.0, intensity: 1.0 };
             let disturbance = Disturbance { snow: 0.9, jitter: 1.0, tear: 1.0, chroma: 1.0 };
-            render(&gpu, &renderer, FrameInputs { index: 4, disturbance, tears, react, snow_rows: 90.0, ..Default::default() })
+            render(
+                &gpu,
+                &renderer,
+                FrameInputs { index: 4, disturbance, tears, react, snow_rows: 90.0, ..Default::default() },
+            )
         };
         let lit = |img: &RgbaImage, x0: u32, x1: u32, y0: u32, y1: u32| {
             (y0..y1).flat_map(|y| (x0..x1).map(move |x| (x, y))).filter(|&(x, y)| img.get_pixel(x, y).0[0] > 0).count()

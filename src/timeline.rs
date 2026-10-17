@@ -445,11 +445,7 @@ impl TimelineFile {
     /// as layer 0 with no path), no intro, outro or title.
     pub fn single(photo: Option<PhotoSpec>, stillness: Stillness, seed: u32) -> Self {
         let scene = photo.map_or(
-            SceneSpec::Photo(PhotoSpec {
-                path: PathBuf::new(),
-                framing: Framing::default(),
-                soften: 0.0,
-            }),
+            SceneSpec::Photo(PhotoSpec { path: PathBuf::new(), framing: Framing::default(), soften: 0.0 }),
             SceneSpec::Photo,
         );
         let params = vec![

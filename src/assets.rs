@@ -296,8 +296,7 @@ impl AssetCache {
     /// to nothing.
     pub fn assets(&mut self, timeline: &Timeline) -> Assets {
         let (width, height) = (self.width, self.height);
-        let (mut photos, mut outlines): (Vec<_>, Vec<_>) =
-            timeline.photos.iter().map(|spec| self.photo(spec)).unzip();
+        let (mut photos, mut outlines): (Vec<_>, Vec<_>) = timeline.photos.iter().map(|spec| self.photo(spec)).unzip();
         if photos.is_empty() {
             let black = RgbaImage::from_pixel(width, height, Rgba([0, 0, 0, 255]));
             outlines.push(Arc::new(outline(&black)));
@@ -316,7 +315,19 @@ impl AssetCache {
             test_card(w, h)
         } else {
             load_photo(&spec.path, w, h, &spec.framing).unwrap_or_else(|e| {
-                eprintln!("warning: {e:#}; showing the test card instead");
+                // Paths are relative to the timeline, so a bare file name
+                // misses the photos folder.
+                let in_photos = spec.path.parent().zip(spec.path.file_name()).map(|(d, n)| d.join("photos").join(n));
+                let hint = match in_photos {
+                    Some(p) if !spec.path.exists() && p.exists() => {
+                        format!(
+                            " (paths are relative to the timeline: did you mean \"photos/{}\"?)",
+                            p.file_name().unwrap().to_string_lossy()
+                        )
+                    }
+                    _ => String::new(),
+                };
+                eprintln!("warning: {e:#}{hint}; showing the test card instead");
                 test_card(w, h)
             })
         };
